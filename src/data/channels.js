@@ -146,10 +146,20 @@ const FC_CATEGORY = {
   Boxing:      'boxing',
 }
 
+// Rewrite FanCode CDN URLs to same-origin /fc-cdn/ so the Edge Function
+// proxy handles them (no Origin header from browser, Cloudflare edge IP).
+function toFcProxy(url) {
+  if (!url) return url
+  try {
+    const u = new URL(url)
+    if (u.hostname === 'in-mc-fblive.fancode.com') return `/fc-cdn${u.pathname}${u.search}`
+  } catch {}
+  return url
+}
+
 export function mapFanCodeChannel(match) {
-  const primary  = match.adfree_url || match.dai_url
-  const fallback = (match.adfree_url && match.dai_url && match.adfree_url !== match.dai_url)
-                     ? match.dai_url : null
+  const primary  = toFcProxy(match.adfree_url || match.dai_url)
+  const fallback = null
   return {
     id:           match.match_id,
     key:          `fc_${match.match_id}`,

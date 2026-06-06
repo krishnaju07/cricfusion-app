@@ -1,25 +1,28 @@
-// Vercel serverless function — transparent proxy for FanCode CDN.
-// Invoked via vercel.json routes: /fc-cdn/(.*) → /api/fc-cdn?path=$1
-// Strips Referer/Origin so the CDN doesn't 403 cross-origin requests.
-// Rewrites absolute CDN URLs inside HLS manifests so every subsequent
-// segment fetch also goes through this proxy.
+// Vercel Edge Function — transparent proxy for FanCode CDN.
+// Runs on Cloudflare edge nodes close to the user (Mumbai for IN users),
+// so the outgoing IP is a Cloudflare edge IP rather than an AWS Lambda IP.
+// Strips cross-origin headers by only forwarding clean browser-like headers.
+// Rewrites absolute CDN URLs inside HLS manifests so segment fetches also
+// go through this proxy.
 
-export default async function handler(req, res) {
-  const path = req.query.path || ''
+export const config = { runtime: 'edge' }
 
-  // Forward original query params (e.g. CDN tokens), excluding the injected 'path'
-  const params = Object.fromEntries(
-    Object.entries(req.query).filter(([k]) => k !== 'path')
-  )
-  const qs = new URLSearchParams(params).toString()
+export default async function handler(req) {
+  const url = new URL(req.url)
+  const path = url.searchParams.get('path') || ''
+
+  // Forward original CDN query params (tokens etc.), drop the injected 'path'
+  const params = new URLSearchParams(url.search)
+  params.delete('path')
+  const qs = params.toString()
   const upstream = `https://in-mc-fblive.fancode.com/${path}${qs ? '?' + qs : ''}`
 
-  let resp
+  let upstreamResp
   try {
-    resp = await fetch(upstream, {
+    upstreamResp = await fetch(upstream, {
       method: req.method,
       headers: {
-        accept: req.headers['accept'] || '*/*',
+        accept: req.headers.get('accept') || '*/*',
         'accept-language': 'en-GB,en-US;q=0.9,en;q=0.8',
         'user-agent':
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36',
@@ -34,21 +37,24 @@ export default async function handler(req, res) {
       },
     })
   } catch {
-    res.status(502).end('Proxy error')
-    return
+    return new Response('Proxy error', { status: 502 })
   }
 
-  const ct = resp.headers.get('content-type') || 'application/octet-stream'
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Cache-Control', 'no-cache, no-store')
-  res.setHeader('Content-Type', ct)
+  const ct = upstreamResp.headers.get('content-type') || 'application/octet-stream'
+  const responseHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Cache-Control': 'no-cache, no-store',
+    'Content-Type': ct,
+  }
 
   if (ct.includes('mpegurl') || path.endsWith('.m3u8')) {
-    let text = await resp.text()
+    // Rewrite absolute FanCode CDN URLs so HLS.js segment fetches also
+    // go through this proxy (same-origin /fc-cdn/ path).
+    let text = await upstreamResp.text()
     text = text.replace(/https?:\/\/in-mc-fblive\.fancode\.com\//g, '/fc-cdn/')
-    res.status(resp.status).send(text)
-  } else {
-    const buf = await resp.arrayBuffer()
-    res.status(resp.status).send(Buffer.from(buf))
+    return new Response(text, { status: upstreamResp.status, headers: responseHeaders })
   }
+
+  // Stream binary segments directly — avoids loading full segment into memory
+  return new Response(upstreamResp.body, { status: upstreamResp.status, headers: responseHeaders })
 }
