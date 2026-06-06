@@ -6,6 +6,11 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
+      '/api/cf-dynamic': {
+        target: 'https://newwwwapiiiiii.vercel.app',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/cf-dynamic/, '/main'),
+      },
       '/fc-cdn': {
         target:       'https://in-mc-fblive.fancode.com',
         changeOrigin: true,

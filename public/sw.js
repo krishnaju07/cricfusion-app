@@ -3,7 +3,7 @@
 // Page sees /cf-data or /cf-dynamic?id=...; real upstream URLs stay hidden.
 
 const BATCH_URL    = 'https://jtvv.pages.dev/channels.json'
-const DYNAMIC_URL  = 'https://newwwwapiiiiii.vercel.app/main'
+const DYNAMIC_URL  = '/api/cf-dynamic'
 const FANCODE_URL  = 'https://raw.githubusercontent.com/drmlive/fancode-live-events/main/fancode.json'
 
 function b64(text) {

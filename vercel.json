@@ -1,8 +1,7 @@
 {
-  "rewrites": [
-    {
-      "source": "/fc-cdn/:path*",
-      "destination": "/api/fc-cdn/:path*"
-    }
+  "routes": [
+    { "src": "/fc-cdn/(.*)", "dest": "/api/fc-cdn?path=$1" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
