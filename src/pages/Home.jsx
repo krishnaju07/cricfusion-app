@@ -11,7 +11,9 @@ export default function Home() {
 
   const filtered = useMemo(() => {
     let list = channels
-    if (activeCategory !== 'all') {
+    if (activeCategory === 'fancode') {
+      list = list.filter((c) => c.key?.startsWith('fc_'))
+    } else if (activeCategory !== 'all') {
       list = list.filter((c) => c.category === activeCategory)
     }
     if (searchQuery.trim()) {
