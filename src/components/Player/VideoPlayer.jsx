@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
 import Hls from 'hls.js'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Lock, LockOpen } from 'lucide-react'
 import PlayerControls from './PlayerControls'
 import QualityMenu from './QualityMenu'
 import SeekIndicator from './SeekIndicator'
@@ -38,6 +39,7 @@ export default function VideoPlayer({ channel }) {
     showQualityMenu: false,
     seekIndicator: null,
     isLive: false,
+    locked: false,
   })
 
   const update = useCallback((patch) => {
@@ -442,9 +444,45 @@ export default function VideoPlayer({ channel }) {
       {/* Seek indicator */}
       <SeekIndicator type={state.seekIndicator} />
 
-      {/* Controls overlay */}
+      {/* ── Locked overlay ── */}
       <AnimatePresence>
-        {(state.showControls || !state.playing) && (
+        {state.locked && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="absolute inset-0 z-20"
+            onClick={showControlsTemporarily}
+          >
+            {/* Permanent lock badge — top right */}
+            <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm border border-white/20 flex items-center justify-center">
+              <Lock size={14} className="text-white/70" />
+            </div>
+
+            {/* Tap-to-unlock button — appears briefly on tap */}
+            <AnimatePresence>
+              {state.showControls && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.85 }} transition={{ duration: 0.18 }}
+                  className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                >
+                  <motion.button
+                    whileTap={{ scale: 0.92 }}
+                    onClick={(e) => { e.stopPropagation(); update({ locked: false }) }}
+                    className="flex flex-col items-center gap-2 bg-black/65 backdrop-blur-sm rounded-2xl px-7 py-5 border border-white/20 pointer-events-auto"
+                  >
+                    <LockOpen size={26} className="text-white" />
+                    <span className="text-white text-xs font-semibold tracking-wide">Tap to unlock</span>
+                  </motion.button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Controls overlay (hidden while locked) ── */}
+      <AnimatePresence>
+        {!state.locked && (state.showControls || !state.playing) && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
@@ -500,6 +538,7 @@ export default function VideoPlayer({ channel }) {
               onPIP={togglePIP}
               onGoLive={goLive}
               onToggleQuality={() => update({ showQualityMenu: !state.showQualityMenu })}
+              onLock={() => update({ locked: true, showControls: false })}
             />
           </motion.div>
         )}

@@ -3,14 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Play, Pause, Volume2, VolumeX, Volume1,
   Maximize, Minimize, PictureInPicture2, Settings,
-  Radio, SkipBack, SkipForward
+  Radio, SkipBack, SkipForward, Lock
 } from 'lucide-react'
 import { formatTime } from '../../utils/formatTime'
 
 export default function PlayerControls({
   state, channel,
   onPlayPause, onSeek, onSeekTo, onVolume, onMute,
-  onFullscreen, onPIP, onGoLive, onToggleQuality
+  onFullscreen, onPIP, onGoLive, onToggleQuality, onLock
 }) {
   const { playing, muted, volume, currentTime, duration, buffered, fullscreen, isLive } = state
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0
@@ -218,6 +218,11 @@ export default function PlayerControls({
               <PictureInPicture2 size={15} />
             </ControlBtn>
           )}
+
+          {/* Lock controls */}
+          <ControlBtn onClick={onLock} title="Lock controls">
+            <Lock size={15} />
+          </ControlBtn>
 
           {/* Fullscreen */}
           <ControlBtn onClick={onFullscreen} title={fullscreen ? 'Exit Fullscreen (F)' : 'Fullscreen (F)'}>
