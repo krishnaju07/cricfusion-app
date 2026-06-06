@@ -56,12 +56,9 @@ export default function SettingsMenu({
               onClick={() => onSelectSubtitle({ type: 'track', index: i })}
               className="w-full flex items-center justify-between px-3 py-2 hover:bg-white/10 transition-colors"
             >
-              <div className="flex items-center gap-2">
-                <MessageSquare size={12} className="text-white/50" />
-                <span className="text-white text-sm">
-                  Subtitle{streamTracks.length > 1 ? ` ${i + 1}` : ''}
-                </span>
-              </div>
+              <span className="text-white text-sm">
+                Subtitle{streamTracks.length > 1 ? ` ${i + 1}` : ''}
+              </span>
               {subtitleMode?.type === 'track' && subtitleMode.index === i && (
                 <Check size={14} className="text-brand-400" />
               )}

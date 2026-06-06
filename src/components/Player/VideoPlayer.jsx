@@ -285,7 +285,9 @@ export default function VideoPlayer({ channel }) {
     if (!video) return
     const detect = () => {
       const tracks = Array.from(video.textTracks).filter(
-        (t) => t.kind === 'subtitles' || t.kind === 'captions'
+        // Exclude HLS.js phantom CEA-608 placeholders (empty label + 'und' language)
+        (t) => (t.kind === 'subtitles' || t.kind === 'captions') &&
+                !(t.label === '' && (!t.language || t.language === 'und'))
       )
       setStreamTracks(tracks.map((t, i) => ({
         index: i,
