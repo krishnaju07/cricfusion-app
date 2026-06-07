@@ -31,13 +31,14 @@ function rewriteManifest(text, hdnea) {
 export default async function handler(req) {
   const url = new URL(req.url)
   const path = url.searchParams.get('path') || ''
+  const hdnea = url.searchParams.get('hdnea') || ''
 
-  const params = new URLSearchParams(url.search)
-  params.delete('path')
-  const hdnea = params.get('hdnea') || ''
-  const qs = params.toString()
+  // Strip only 'path=' from the raw query string and pass everything else to Akamai
+  // verbatim. Avoid URLSearchParams.toString() — it re-encodes '=' to '%3D' inside
+  // token values (hdnea, hdntl) and breaks Akamai's signature validation.
+  const rawQs = url.search.slice(1).split('&').filter((p) => !p.startsWith('path=')).join('&')
 
-  const upstream = `https://sonydaimenew.akamaized.net/${path}${qs ? '?' + qs : ''}`
+  const upstream = `https://sonydaimenew.akamaized.net/${path}${rawQs ? '?' + rawQs : ''}`
 
   let upstreamResp
   try {
