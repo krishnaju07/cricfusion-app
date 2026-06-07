@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Sun, Moon, RefreshCw, Tv2, Bell, Shield, Info, ChevronRight, LogOut } from 'lucide-react'
+import { Sun, Moon, RefreshCw, Tv2, Bell, Shield, Info, ChevronRight, LogOut, Heart } from 'lucide-react'
 import { useStore } from '../store/useStore'
 
 function Row({ icon: Icon, label, value, onClick, accent }) {
@@ -138,6 +138,13 @@ export default function Account() {
           <LogOut size={16} />
           Sign Out
         </motion.button>
+      </div>
+
+      {/* Developer credit */}
+      <div className="flex items-center justify-center gap-1 mb-6 mt-3">
+        <Heart size={9} className="text-red-500 fill-red-500" />
+        <span className="text-white/20 text-[10px] font-medium tracking-wide">developed by</span>
+        <span className="text-[10px] font-bold tracking-wide" style={{ color: 'rgba(200,255,0,0.5)' }}>Krishi</span>
       </div>
 
     </main>
