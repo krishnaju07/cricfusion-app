@@ -12,9 +12,8 @@ export default function ChannelCard({ channel, index = 0 }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.035, duration: 0.3 }}
-      whileTap={{ scale: 0.97 }}
       onClick={() => navigate(`/watch/${channel.id}`)}
-      className="group cursor-pointer rounded-2xl overflow-hidden bg-[#141414] border border-white/[0.06] active:border-brand-500/40 transition-colors"
+      className="group cursor-pointer rounded-2xl overflow-hidden bg-[#141414] border border-white/[0.06] active:opacity-80 transition-opacity"
     >
       {/* Thumbnail */}
       <div className="relative overflow-hidden aspect-video">
@@ -26,7 +25,7 @@ export default function ChannelCard({ channel, index = 0 }) {
           <img
             src={channel.thumbnail}
             alt={channel.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            className="w-full h-full object-cover md:group-hover:scale-105 md:transition-transform md:duration-500"
             loading="lazy"
             onError={() => setImgFailed(true)}
           />
@@ -34,14 +33,6 @@ export default function ChannelCard({ channel, index = 0 }) {
 
         {/* Dark overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-
-        {/* "Watch live now" banner — top left ribbon */}
-        {channel.isLive && (
-          <div className="absolute top-3 left-0 flex items-center gap-1.5 bg-red-600 text-white text-[11px] font-black px-3 py-1.5 rounded-r-full shadow-lg">
-            <span className="tracking-wider">»»</span>
-            <span>Watch live now</span>
-          </div>
-        )}
 
         {/* Quality badge — top right */}
         <div className="absolute top-3 right-3">
