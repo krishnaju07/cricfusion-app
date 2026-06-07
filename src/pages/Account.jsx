@@ -54,7 +54,7 @@ export default function Account() {
   const liveCount = channels.filter((c) => c.isLive).length
 
   return (
-    <main className="flex-1 overflow-y-auto bg-black pb-safe">
+    <main className="flex-1 overflow-y-auto bg-black pb-safe no-scrollbar">
 
       {/* Profile card */}
       <div className="px-4 pt-6 pb-5">

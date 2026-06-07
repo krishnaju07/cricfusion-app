@@ -141,6 +141,15 @@
   border: none;
 }
 
+/* ── Card mount animation (CSS only — no framer-motion in tap path) ── */
+@keyframes card-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.card-appear {
+  animation: card-up 0.28s ease-out both;
+}
+
 /* ── Keyframes ── */
 @keyframes particle-float {
   0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.3; }

@@ -29,7 +29,7 @@ export default function Search() {
   const hasQuery = searchQuery.trim().length > 0
 
   return (
-    <main className="flex-1 overflow-y-auto bg-black pb-safe">
+    <main className="flex-1 overflow-y-auto bg-black pb-safe no-scrollbar">
 
       {/* Search bar */}
       <div className="sticky top-0 z-10 bg-black px-4 pt-4 pb-3 border-b border-white/[0.06]">

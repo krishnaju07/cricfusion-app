@@ -20,7 +20,7 @@ export default function Sports() {
   const liveCount = filtered.filter((c) => c.isLive).length
 
   return (
-    <main className="flex-1 overflow-y-auto bg-black pb-safe">
+    <main className="flex-1 overflow-y-auto bg-black pb-safe no-scrollbar">
 
       {/* Header */}
       <div className="px-4 md:px-6 pt-5 pb-1 flex items-center gap-3">

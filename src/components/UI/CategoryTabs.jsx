@@ -14,7 +14,8 @@ export default function CategoryTabs() {
             key={cat.id}
             whileTap={{ scale: 0.93 }}
             onClick={() => setActiveCategory(cat.id)}
-            className="flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-bold whitespace-nowrap transition-all"
+            className="flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-bold whitespace-nowrap"
+            style={{ transition: 'background 0.18s ease, color 0.18s ease' }}
             style={
               active
                 ? { background: '#c8ff00', color: '#000' }

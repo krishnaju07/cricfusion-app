@@ -30,7 +30,7 @@ export default function Home() {
   }, [activeCategory, searchQuery, channels])
 
   return (
-    <main className="flex-1 overflow-y-auto bg-black pb-safe">
+    <main className="flex-1 overflow-y-auto bg-black pb-safe no-scrollbar">
 
       {/* Hero carousel — full bleed, no horizontal padding */}
       <HeroSection />

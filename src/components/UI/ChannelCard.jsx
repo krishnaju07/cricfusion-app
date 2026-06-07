@@ -1,19 +1,19 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { Users } from 'lucide-react'
 
 export default function ChannelCard({ channel, index = 0 }) {
-  const navigate    = useNavigate()
+  const navigate   = useNavigate()
   const [imgFailed, setImgFailed] = useState(false)
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.035, duration: 0.3 }}
+    <div
+      className="card-appear cursor-pointer rounded-2xl overflow-hidden bg-[#141414] border border-white/[0.06]"
+      style={{
+        animationDelay: `${Math.min(index, 10) * 0.04}s`,
+        WebkitTapHighlightColor: 'transparent',
+      }}
       onClick={() => navigate(`/watch/${channel.id}`)}
-      className="group cursor-pointer rounded-2xl overflow-hidden bg-[#141414] border border-white/[0.06] active:opacity-80 transition-opacity"
     >
       {/* Thumbnail */}
       <div className="relative overflow-hidden aspect-video">
@@ -25,16 +25,15 @@ export default function ChannelCard({ channel, index = 0 }) {
           <img
             src={channel.thumbnail}
             alt={channel.name}
-            className="w-full h-full object-cover md:group-hover:scale-105 md:transition-transform md:duration-500"
+            className="w-full h-full object-cover"
             loading="lazy"
             onError={() => setImgFailed(true)}
           />
         )}
 
-        {/* Dark overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
-        {/* Quality badge — top right */}
+        {/* Quality badge */}
         <div className="absolute top-3 right-3">
           <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${
             channel.badge === '4K' ? 'bg-purple-600 text-white' :
@@ -45,7 +44,6 @@ export default function ChannelCard({ channel, index = 0 }) {
           </span>
         </div>
 
-        {/* Score overlay */}
         {channel.score && (
           <div className="absolute bottom-2 left-3 right-3">
             <span className="text-white/80 text-xs font-medium line-clamp-1">{channel.score}</span>
@@ -55,7 +53,7 @@ export default function ChannelCard({ channel, index = 0 }) {
 
       {/* Card body */}
       <div className="px-3 py-2.5 space-y-1">
-        <p className="text-white font-semibold text-sm leading-snug line-clamp-2 group-hover:text-brand-400 transition-colors">
+        <p className="text-white font-semibold text-sm leading-snug line-clamp-2">
           {channel.currentMatch}
         </p>
         <div className="flex items-center justify-between gap-2">
@@ -68,6 +66,6 @@ export default function ChannelCard({ channel, index = 0 }) {
           )}
         </div>
       </div>
-    </motion.div>
+    </div>
   )
 }
