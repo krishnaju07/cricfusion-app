@@ -1,9 +1,10 @@
 import { motion } from 'framer-motion'
-import { Check, Zap, Mic } from 'lucide-react'
+import { Check, Zap, Mic, Sparkles } from 'lucide-react'
 
 export default function SettingsMenu({
   levels, currentQuality, onSelectQuality,
   streamTracks, subtitleMode, onSelectSubtitle,
+  enhance, onToggleEnhance,
   onClose,
 }) {
   return (
@@ -75,6 +76,24 @@ export default function SettingsMenu({
               <span className="text-[9px] bg-brand-500/25 text-brand-300 px-1 py-0.5 rounded font-bold">BETA</span>
             </div>
             {subtitleMode?.type === 'speech' && <Check size={14} className="text-brand-400" />}
+          </button>
+        </div>
+
+        {/* ── Picture Enhance ── */}
+        <div className="px-3 pt-2.5 pb-1.5 border-t border-white/10">
+          <p className="text-white/50 text-[10px] font-semibold uppercase tracking-wider">Picture</p>
+        </div>
+        <div className="py-1">
+          <button
+            onClick={onToggleEnhance}
+            className="w-full flex items-center justify-between px-3 py-2 hover:bg-white/10 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <Sparkles size={12} className={enhance ? 'text-brand-400' : 'text-white/40'} />
+              <span className="text-white text-sm">Enhance</span>
+              <span className="text-[9px] bg-brand-500/25 text-brand-300 px-1 py-0.5 rounded font-bold">SHARP</span>
+            </div>
+            {enhance && <Check size={14} className="text-brand-400" />}
           </button>
         </div>
       </motion.div>

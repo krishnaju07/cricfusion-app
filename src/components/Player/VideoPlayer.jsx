@@ -47,6 +47,7 @@ export default function VideoPlayer({ channel }) {
     quality: 'Auto',
     qualityLevels: [],
     showQualityMenu: false,
+    enhance: false,
     seekIndicator: null,
     isLive: false,
     locked: false,
@@ -519,14 +520,14 @@ export default function VideoPlayer({ channel }) {
 
   const goLive = useCallback(() => {
     const v = videoRef.current; if (!v) return
-    if (shakaRef.current?.isLive()) {
-      const range = shakaRef.current.seekRange()
-      if (range.end > 0) v.currentTime = range.end
-    } else if (hlsRef.current?.liveSyncPosition) {
-      v.currentTime = hlsRef.current.liveSyncPosition
-    } else if (v.duration && isFinite(v.duration)) {
-      v.currentTime = v.duration - 0.5
-    }
+    // seekable.end is the true live edge reported by the MSE buffer — more accurate
+    // than liveSyncPosition (which HLS.js intentionally targets behind the edge)
+    // or seekRange().end which can lag by a segment. Subtract 0.1 s so we don't
+    // land past the buffered region and trigger an unnecessary re-buffer.
+    const edge = v.seekable.length > 0
+      ? v.seekable.end(v.seekable.length - 1)
+      : (isFinite(v.duration) ? v.duration : null)
+    if (edge !== null) v.currentTime = Math.max(0, edge - 0.1)
     v.play()
   }, [])
 
@@ -685,7 +686,7 @@ export default function VideoPlayer({ channel }) {
         style={{
           objectFit: state.objectFit,
           transform: `scale(${state.zoom})`,
-          filter: `brightness(${state.brightness})`,
+          filter: `brightness(${state.brightness})${state.enhance ? ' contrast(1.1) saturate(1.15)' : ''}`,
           transformOrigin: 'center',
         }}
         playsInline preload="auto"
@@ -876,6 +877,8 @@ export default function VideoPlayer({ channel }) {
             streamTracks={streamTracks}
             subtitleMode={state.subtitleMode}
             onSelectSubtitle={applySubtitle}
+            enhance={state.enhance}
+            onToggleEnhance={() => update({ enhance: !state.enhance })}
             onClose={() => update({ showQualityMenu: false })}
           />
         )}
