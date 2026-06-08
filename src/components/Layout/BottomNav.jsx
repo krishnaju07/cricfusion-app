@@ -1,11 +1,12 @@
 import { useNavigate, useLocation } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { Home, Search, Trophy, UserCircle } from 'lucide-react'
 
 const TABS = [
-  { id: 'home',    label: 'Home',       icon: Home,       path: '/' },
-  { id: 'search',  label: 'Search',     icon: Search,     path: '/search' },
-  { id: 'sports',  label: 'All Sports', icon: Trophy,     path: '/sports' },
-  { id: 'account', label: 'Account',    icon: UserCircle, path: '/account' },
+  { id: 'home',    label: 'Home',       icon: Home,        path: '/' },
+  { id: 'search',  label: 'Search',     icon: Search,      path: '/search' },
+  { id: 'sports',  label: 'Sports',     icon: Trophy,      path: '/sports' },
+  { id: 'account', label: 'Account',    icon: UserCircle,  path: '/account' },
 ]
 
 export default function BottomNav() {
@@ -17,9 +18,9 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-black"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-md"
       style={{
-        boxShadow: '0 -1px 0 rgba(255,255,255,0.06)',
+        borderTop: '1px solid rgba(255,255,255,0.07)',
         paddingBottom: 'env(safe-area-inset-bottom)',
       }}
     >
@@ -27,42 +28,48 @@ export default function BottomNav() {
         {TABS.map((tab) => {
           const active = isActive(tab.path)
           return (
-            <button
+            <motion.button
               key={tab.id}
               onClick={() => navigate(tab.path)}
               className="flex flex-col items-center justify-center gap-0.5 flex-1 relative"
               style={{ WebkitTapHighlightColor: 'transparent' }}
+              whileTap={{ scale: 0.88 }}
             >
-              {/* Indicator pill — always rendered, opacity drives transition */}
-              <span
-                className="absolute top-0 left-1/2 -translate-x-1/2 rounded-b-full"
-                style={{
-                  width: 28,
-                  height: 3,
-                  background: '#c8ff00',
-                  opacity: active ? 1 : 0,
-                  transition: 'opacity 0.2s ease',
-                }}
-              />
+              {/* Sliding top indicator */}
+              {active && (
+                <motion.span
+                  layoutId="bottom-nav-indicator"
+                  className="absolute top-0 left-1/2 -translate-x-1/2 rounded-b-full"
+                  style={{ width: 28, height: 3, background: '#c8ff00' }}
+                  transition={{ type: 'spring', stiffness: 420, damping: 36 }}
+                />
+              )}
 
-              <tab.icon
-                size={22}
-                strokeWidth={active ? 2.5 : 1.5}
-                style={{
-                  color: active ? '#c8ff00' : 'rgba(255,255,255,0.35)',
-                  transition: 'color 0.2s ease, stroke-width 0.2s ease',
+              {/* Icon with spring bounce */}
+              <motion.div
+                animate={{
+                  y: active ? -1 : 0,
+                  scale: active ? 1.08 : 1,
                 }}
-              />
-              <span
+                transition={{ type: 'spring', stiffness: 420, damping: 28 }}
+              >
+                <tab.icon
+                  size={22}
+                  strokeWidth={active ? 2.5 : 1.5}
+                  style={{ color: active ? '#c8ff00' : 'rgba(255,255,255,0.32)' }}
+                />
+              </motion.div>
+
+              {/* Label */}
+              <motion.span
+                animate={{ opacity: active ? 1 : 0.45 }}
+                transition={{ duration: 0.18 }}
                 className="text-[10px] font-semibold"
-                style={{
-                  color: active ? '#c8ff00' : 'rgba(255,255,255,0.35)',
-                  transition: 'color 0.2s ease',
-                }}
+                style={{ color: active ? '#c8ff00' : 'rgba(255,255,255,0.35)' }}
               >
                 {tab.label}
-              </span>
-            </button>
+              </motion.span>
+            </motion.button>
           )
         })}
       </div>
