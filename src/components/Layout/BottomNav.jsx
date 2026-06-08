@@ -35,15 +35,17 @@ export default function BottomNav() {
               style={{ WebkitTapHighlightColor: 'transparent' }}
               whileTap={{ scale: 0.88 }}
             >
-              {/* Sliding top indicator */}
-              {active && (
-                <motion.span
-                  layoutId="bottom-nav-indicator"
-                  className="absolute top-0 left-1/2 -translate-x-1/2 rounded-b-full"
-                  style={{ width: 28, height: 3, background: '#c8ff00' }}
-                  transition={{ type: 'spring', stiffness: 420, damping: 36 }}
-                />
-              )}
+              {/* Sliding top indicator — wrapper flex-centers so layoutId has no transform conflict */}
+              <div className="absolute top-0 left-0 right-0 flex justify-center">
+                {active && (
+                  <motion.div
+                    layoutId="bottom-nav-indicator"
+                    className="rounded-b-full"
+                    style={{ width: 28, height: 3, background: '#c8ff00' }}
+                    transition={{ type: 'spring', stiffness: 420, damping: 36 }}
+                  />
+                )}
+              </div>
 
               {/* Icon with spring bounce */}
               <motion.div
