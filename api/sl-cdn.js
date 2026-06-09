@@ -10,9 +10,11 @@ export const config = { runtime: 'edge' }
 // Set via environment variables: PROXY_URL (e.g., http://user:pass@proxy-host:port)
 const RESIDENTIAL_PROXY = process.env.PROXY_URL || null
 
-// Free CORS proxy fallback — used when direct fetch fails with 403
-// allorigins.win is reliable, free, and doesn't require API keys
-const CORS_PROXY = 'https://api.allorigins.win/raw?url='
+// Free CORS proxy fallbacks — try multiple services if one is down
+const CORS_PROXIES = [
+  'https://api.codetabs.com/v1/proxy?quest=',  // codetabs.com proxy
+  'https://cors-anywhere.herokuapp.com/',       // cors-anywhere proxy
+]
 
 function proxyAkamaiUrl(url, hdnea) {
   let out = url
@@ -100,11 +102,25 @@ export default async function handler(req) {
       headers,
     })
 
-    // If 403 (Akamai IP block) and no residential proxy configured, try free CORS proxy
+    // If 403 (Akamai IP block) and no residential proxy configured, try free CORS proxies
     if (upstreamResp.status === 403 && !RESIDENTIAL_PROXY) {
       clearTimeout(abortTimer)
-      const corsUrl = CORS_PROXY + encodeURIComponent(upstream)
-      upstreamResp = await fetch(corsUrl, { signal: abort.signal })
+      let proxySuccess = false
+      for (const corsProxy of CORS_PROXIES) {
+        try {
+          const corsUrl = corsProxy + encodeURIComponent(upstream)
+          const corsResp = await fetch(corsUrl, { signal: abort.signal })
+          if (corsResp.ok) {
+            upstreamResp = corsResp
+            proxySuccess = true
+            break
+          }
+        } catch {}
+      }
+      if (!proxySuccess) {
+        // All proxies failed, return 403 to trigger error overlay
+        upstreamResp = new Response('Akamai IP blocked; proxies unavailable', { status: 403 })
+      }
     }
 
     clearTimeout(abortTimer)
