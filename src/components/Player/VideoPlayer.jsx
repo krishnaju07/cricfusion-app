@@ -204,7 +204,7 @@ export default function VideoPlayer({ channel }) {
         return
       }
 
-      const player = new shaka.Player(video)
+      const player = new shaka.Player()
       shakaRef.current = player
 
       // DRM: ClearKey (inline keys or license server)
@@ -225,7 +225,6 @@ export default function VideoPlayer({ channel }) {
         const isWv = channel.drmSystem === 'widevine'
         cfg.drm = {
           servers: { [isWv ? 'com.widevine.alpha' : 'org.w3.clearkey']: channel.licenseServer },
-          ...(isWv ? {} : { keySystemsMapping: { 'com.widevine.alpha': 'org.w3.clearkey' } }),
         }
       }
       player.configure(cfg)
@@ -320,6 +319,7 @@ export default function VideoPlayer({ channel }) {
 
       ;(async () => {
         try {
+          await player.attach(video)
           await player.load(channel.url)
         } catch (err) {
           if (isCancelled) return

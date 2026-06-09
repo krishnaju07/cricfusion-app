@@ -47,12 +47,36 @@ async function fetchMpd(id, subscriberId, token) {
   return { mpdUrl: mpdResp.url || url, mpdText: await mpdResp.text() }
 }
 
-function rewriteMpd(text, baseUrl) {
-  // Fix relative "dash/" prefixes in SegmentTemplate initialization/media attributes.
-  // Scoped to those attributes only — avoids corrupting the <BaseURL> query string.
+// Handles: any namespace prefix, optional curly braces, upper/lowercase hex
+function findKid(text) {
+  const m = text.match(/default_KID="\{?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\}?"/i)
+  return m ? m[1].toLowerCase() : null
+}
+
+function rewriteMpd(text, baseUrl, channelId) {
   let out = text.replace(/((?:initialization|media)=")dash\//g, `$1${baseUrl}/dash/`)
-  // Strip PlayReady (9a04f079) — Chrome uses Widevine (edef8ba9) which is kept intact.
+
+  // Extract KID before stripping (it lives on the mp4protection:2011 element, not Widevine/PlayReady)
+  const kid = findKid(out)
+  if (!kid) console.error('[tp-mpd] ch=' + channelId + ' KID not found in MPD — ClearKey injection skipped')
+
+  // Strip PlayReady (9a04f079) and Widevine PSSH (edef8ba9).
+  // Widevine PSSH is protobuf; ClearKey needs keyids format — mixing them causes error 6012.
   out = out.replace(/<ContentProtection[^>]*9a04f079[^>]*(?:\/>|>[\s\S]*?<\/ContentProtection>)/gi, '')
+  out = out.replace(/<ContentProtection[^>]*edef8ba9[^>]*(?:\/>|>[\s\S]*?<\/ContentProtection>)/gi, '')
+
+  if (!kid) return out
+
+  const ck = `<ContentProtection schemeIdUri="urn:uuid:e2719d58-a985-b3c9-781a-b030af78d30e" value="ClearKey1.0"><cenc:default_KID>${kid}</cenc:default_KID></ContentProtection>`
+
+  // Prefer inserting before the remaining mp4protection:2011 ContentProtection.
+  // If none remains (MPD had only Widevine+PlayReady), inject before the first Representation.
+  if (out.includes('<ContentProtection')) {
+    out = out.replace('<ContentProtection', ck + '\n        <ContentProtection')
+  } else {
+    out = out.replace('<Representation', ck + '\n        <Representation')
+  }
+
   return out
 }
 
@@ -72,7 +96,7 @@ export default async function handler(req, res) {
     // so lastIndexOf('/') would land inside the query string without this split.
     const urlPath = mpdUrl.split('?')[0]
     const baseUrl = urlPath.substring(0, urlPath.lastIndexOf('/'))
-    const processed = rewriteMpd(mpdText, baseUrl)
+    const processed = rewriteMpd(mpdText, baseUrl, id)
 
     res.setHeader('Content-Type', 'application/dash+xml')
     res.setHeader('Cache-Control', 'no-cache, no-store')
