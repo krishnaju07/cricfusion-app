@@ -443,7 +443,18 @@ export default function VideoPlayer({ channel }) {
     const canNativeSafariHLS = video.canPlayType('application/vnd.apple.mpegurl') !== ''
     const useSafariNative = isHLS && channel.originalUrl && canNativeSafariHLS
     if (isHLS && Hls.isSupported() && !useSafariNative) {
-      const hls = new Hls({ enableWorker: true, lowLatencyMode: true, backBufferLength: 90 })
+      const hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: true,
+        backBufferLength: 90,
+        // Sony LIV: Akamai always 403s from cloud IPs — no point retrying
+        ...(channel.sonyLivUrl && {
+          manifestLoadingMaxRetry: 0,
+          levelLoadingMaxRetry: 0,
+          fragLoadingMaxRetry: 0,
+          manifestLoadingTimeOut: 8000,
+        }),
+      })
       hlsRef.current = hls
       hls.loadSource(channel.url)
       hls.attachMedia(video)
@@ -483,6 +494,12 @@ export default function VideoPlayer({ channel }) {
         update({ quality: stored?.label ?? 'Auto' })
       })
       hls.on(Hls.Events.ERROR, (_, d) => {
+        // Sony LIV: ANY error = Akamai blocked the cloud proxy — show link right away
+        if (channel.sonyLivUrl) {
+          update({ error: 'Stream unavailable via proxy.', loading: false })
+          hls.stopLoad()
+          return
+        }
         if (d.fatal) {
           if (channel.fallbackUrl && !fallbackTriedRef.current) {
             fallbackTriedRef.current = true
@@ -490,9 +507,6 @@ export default function VideoPlayer({ channel }) {
             hls.stopLoad()
             hls.loadSource(channel.fallbackUrl)
             hls.startLoad()
-          } else if (channel.sonyLivUrl) {
-            // Sony LIV proxy is IP-blocked by Akamai — don't retry, show watch link
-            update({ error: 'Stream unavailable via proxy.', loading: false })
           } else {
             update({ error: 'Stream error. Retrying…', loading: false })
             hlsRetryTimer = setTimeout(() => {

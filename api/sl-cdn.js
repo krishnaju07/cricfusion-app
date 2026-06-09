@@ -61,9 +61,15 @@ export default async function handler(req) {
     || req.headers.get('x-real-ip')
     || req.headers.get('cf-connecting-ip')
 
+  // Abort if Akamai doesn't respond within 8 s — prevents hls.js from showing
+  // "Loading stream..." indefinitely when Akamai drops the TCP connection.
+  const abort = new AbortController()
+  const abortTimer = setTimeout(() => abort.abort(), 8000)
+
   let upstreamResp
   try {
     upstreamResp = await fetch(upstream, {
+      signal: abort.signal,
       headers: {
         'accept': '*/*',
         'accept-language': 'en-GB,en-US;q=0.9,en;q=0.8',
@@ -82,7 +88,9 @@ export default async function handler(req) {
         ...(clientIp && { 'x-forwarded-for': clientIp }),
       },
     })
+    clearTimeout(abortTimer)
   } catch (err) {
+    clearTimeout(abortTimer)
     return new Response('Proxy error: ' + err.message, {
       status: 502,
       headers: { 'Access-Control-Allow-Origin': '*' },
