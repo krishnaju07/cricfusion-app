@@ -6,6 +6,10 @@
 
 export const config = { runtime: 'edge' }
 
+// Residential proxy configuration for Akamai CDN bypass
+// Set via environment variables: PROXY_URL (e.g., http://user:pass@proxy-host:port)
+const RESIDENTIAL_PROXY = process.env.PROXY_URL || null
+
 function proxyAkamaiUrl(url, hdnea) {
   let out = url
   if (out.startsWith('https://sonydaimenew.akamaized.net/')) {
@@ -68,25 +72,29 @@ export default async function handler(req) {
 
   let upstreamResp
   try {
-    upstreamResp = await fetch(upstream, {
+    // If residential proxy configured, route through it; otherwise direct fetch
+    const fetchUrl = RESIDENTIAL_PROXY ? `${RESIDENTIAL_PROXY}?url=${encodeURIComponent(upstream)}` : upstream
+    const headers = {
+      'accept': '*/*',
+      'accept-language': 'en-GB,en-US;q=0.9,en;q=0.8',
+      'dnt': '1',
+      'origin': 'https://www.sonyliv.com',
+      'referer': 'https://www.sonyliv.com/',
+      'priority': 'u=1, i',
+      'sec-ch-ua': '"Chromium";v="148", "Google Chrome";v="148", "Not/A)Brand";v="99"',
+      'sec-ch-ua-mobile': '?0',
+      'sec-ch-ua-platform': '"Windows"',
+      'sec-fetch-dest': 'empty',
+      'sec-fetch-mode': 'cors',
+      'sec-fetch-site': 'cross-site',
+      'sec-fetch-storage-access': 'active',
+      'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36',
+      ...(clientIp && !RESIDENTIAL_PROXY && { 'x-forwarded-for': clientIp }),
+    }
+
+    upstreamResp = await fetch(fetchUrl, {
       signal: abort.signal,
-      headers: {
-        'accept': '*/*',
-        'accept-language': 'en-GB,en-US;q=0.9,en;q=0.8',
-        'dnt': '1',
-        'origin': 'https://www.sonyliv.com',
-        'referer': 'https://www.sonyliv.com/',
-        'priority': 'u=1, i',
-        'sec-ch-ua': '"Chromium";v="148", "Google Chrome";v="148", "Not/A)Brand";v="99"',
-        'sec-ch-ua-mobile': '?0',
-        'sec-ch-ua-platform': '"Windows"',
-        'sec-fetch-dest': 'empty',
-        'sec-fetch-mode': 'cors',
-        'sec-fetch-site': 'cross-site',
-        'sec-fetch-storage-access': 'active',
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36',
-        ...(clientIp && { 'x-forwarded-for': clientIp }),
-      },
+      headers,
     })
     clearTimeout(abortTimer)
   } catch (err) {
