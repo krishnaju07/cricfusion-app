@@ -1,8 +1,10 @@
-import { Readable } from 'node:stream'
+// Vercel Edge Function — transparent proxy for Sony LIV Akamai CDN.
+// Runs on Cloudflare edge nodes close to the user (Mumbai for IN users).
+// Previous implementation used Node.js Lambda (bom1) but Akamai CDN returns
+// 403/219 for AWS data-center IPs. Edge runtime uses Cloudflare nodes which
+// have different ASN classification and may be accepted by Akamai.
 
-// Node.js serverless in Mumbai (AWS ap-south-1) — avoids Cloudflare edge IPs
-// that Akamai blocks. Edge runtime used Cloudflare; this uses AWS Lambda.
-export const config = { regions: ['bom1'] }
+export const config = { runtime: 'edge' }
 
 function proxyAkamaiUrl(url, hdnea) {
   let out = url
@@ -26,18 +28,19 @@ function rewriteManifest(text, hdnea) {
   return out
 }
 
-export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Cache-Control', 'no-cache, no-store')
-
+export default async function handler(req) {
   if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
-    res.setHeader('Access-Control-Allow-Headers', '*')
-    res.statusCode = 204
-    return res.end()
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': '*',
+      },
+    })
   }
 
-  const url = new URL(req.url, 'https://x.x')
+  const url = new URL(req.url)
   const path = url.searchParams.get('path') || ''
   const hdnea = url.searchParams.get('hdnea') || ''
   const akamaiHost = url.searchParams.get('host') === 'p'
@@ -45,7 +48,7 @@ export default async function handler(req, res) {
     : 'sonydaimenew.akamaized.net'
 
   // Preserve raw query string verbatim — URLSearchParams.toString() re-encodes
-  // '=' inside hdnea values as '%3D', breaking Akamai's HMAC validation.
+  // '=' inside hdnea/hmac values as '%3D', breaking Akamai's HMAC validation.
   const rawQs = url.search.slice(1).split('&')
     .filter((p) => !p.startsWith('path=') && !p.startsWith('host='))
     .join('&')
@@ -70,36 +73,26 @@ export default async function handler(req, res) {
         'sec-fetch-site': 'cross-site',
         'sec-fetch-storage-access': 'active',
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36',
-        ...(req.headers['range'] && { 'range': req.headers['range'] }),
       },
     })
   } catch (err) {
-    res.statusCode = 502
-    return res.end('Proxy error: ' + err.message)
-  }
-
-  if (upstreamResp.status === 403) {
-    const body = await upstreamResp.text()
-    res.statusCode = 403
-    res.setHeader('Content-Type', 'text/plain')
-    return res.end(`Upstream 403 from ${akamaiHost}\n\n${body}`)
+    return new Response('Proxy error: ' + err.message, {
+      status: 502,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+    })
   }
 
   const ct = upstreamResp.headers.get('content-type') || 'application/octet-stream'
-  res.statusCode = upstreamResp.status
-  res.setHeader('Content-Type', ct)
+  const responseHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Cache-Control': 'no-cache, no-store',
+    'Content-Type': ct,
+  }
 
   if (ct.includes('mpegurl') || path.endsWith('.m3u8')) {
     const text = rewriteManifest(await upstreamResp.text(), hdnea)
-    return res.end(text)
+    return new Response(text, { status: upstreamResp.status, headers: responseHeaders })
   }
 
-  // Stream binary segments directly without buffering
-  if (upstreamResp.body) {
-    const nodeStream = Readable.fromWeb(upstreamResp.body)
-    nodeStream.on('error', () => { if (!res.writableEnded) res.end() })
-    nodeStream.pipe(res)
-  } else {
-    res.end()
-  }
+  return new Response(upstreamResp.body, { status: upstreamResp.status, headers: responseHeaders })
 }
