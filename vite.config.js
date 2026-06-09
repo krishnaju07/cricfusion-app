@@ -237,14 +237,21 @@ function tpMpdProxyDev() {
             headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': '*/*', 'Referer': 'https://watch.tataplay.com/', 'Origin': 'https://watch.tataplay.com' },
           })
           let text = await r.text()
-          const kidMatch = text.match(/cenc:default_KID="([0-9a-f-]{36})"/i)
-          if (kidMatch) {
-            const kid = kidMatch[1]
-            // Strip Widevine and PlayReady, inject ClearKey before EVERY mp4protection
-            text = text.replace(/<ContentProtection[^>]*(?:edef8ba9|9a04f079)[^>]*(?:\/>|>[\s\S]*?<\/ContentProtection>)/gi, '')
-            const ck = `<ContentProtection schemeIdUri="urn:uuid:e2719d58-a985-b3c9-781a-b030af78d30e" value="ClearKey1.0"><cenc:default_KID>${kid}</cenc:default_KID></ContentProtection>\n        `
-            text = text.replace(/<ContentProtection schemeIdUri="urn:mpeg:dash:mp4protection/g,
-              `${ck}<ContentProtection schemeIdUri="urn:mpeg:dash:mp4protection`)
+          // Robust KID extraction (any namespace prefix, optional curly braces)
+          const kidMatch = text.match(/default_KID="\{?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\}?"/i)
+          const kid = kidMatch ? kidMatch[1].toLowerCase() : null
+          // Strip Widevine (edef8ba9), PlayReady (9a04f079), and all PSSH blobs
+          text = text.replace(/<ContentProtection[^>]*edef8ba9[^>]*(?:\/>|>[\s\S]*?<\/ContentProtection>)/gi, '')
+          text = text.replace(/<ContentProtection[^>]*9a04f079[^>]*(?:\/>|>[\s\S]*?<\/ContentProtection>)/gi, '')
+          text = text.replace(/<(?:\w+:)?pssh[^>]*>[\s\S]*?<\/(?:\w+:)?pssh>/gi, '')
+          if (kid) {
+            const ck = `<ContentProtection schemeIdUri="urn:uuid:e2719d58-a985-b3c9-781a-b030af78d30e" value="ClearKey1.0"><cenc:default_KID>${kid}</cenc:default_KID></ContentProtection>`
+            if (text.includes('<ContentProtection')) {
+              // Inject ClearKey before every ContentProtection (handles all AdaptationSets)
+              text = text.replace(/<ContentProtection/g, `${ck}\n        <ContentProtection`)
+            } else {
+              text = text.replace(/<Representation/g, `${ck}\n        <Representation`)
+            }
           }
           res.setHeader('Content-Type', 'application/dash+xml')
           res.setHeader('Cache-Control', 'no-cache')

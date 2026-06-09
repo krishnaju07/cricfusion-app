@@ -33,11 +33,11 @@ export default async function handler(req, res) {
     const kid = kidMatch ? kidMatch[1].toLowerCase() : null
     if (!kid) console.error('[tp-mpd-proxy] KID not found in MPD:', targetUrl.split('?')[0])
 
-    // Strip Widevine (edef8ba9) and PlayReady (9a04f079).
-    // Leaving Widevine PSSH alongside ClearKey causes Shaka error 6012 —
-    // keySystemsMapping redirects to ClearKey but passes Widevine protobuf as init data.
+    // Strip Widevine (edef8ba9) and PlayReady (9a04f079) ContentProtection elements.
+    // Also strip PSSH blobs — Widevine PSSH may be embedded inside mp4protection:2011.
     text = text.replace(/<ContentProtection[^>]*edef8ba9[^>]*(?:\/>|>[\s\S]*?<\/ContentProtection>)/gi, '')
     text = text.replace(/<ContentProtection[^>]*9a04f079[^>]*(?:\/>|>[\s\S]*?<\/ContentProtection>)/gi, '')
+    text = text.replace(/<(?:\w+:)?pssh[^>]*>[\s\S]*?<\/(?:\w+:)?pssh>/gi, '')
 
     if (kid) {
       const ck = `<ContentProtection schemeIdUri="urn:uuid:e2719d58-a985-b3c9-781a-b030af78d30e" value="ClearKey1.0"><cenc:default_KID>${kid}</cenc:default_KID></ContentProtection>`

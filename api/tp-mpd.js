@@ -60,10 +60,11 @@ function rewriteMpd(text, baseUrl, channelId) {
   const kid = findKid(out)
   if (!kid) console.error('[tp-mpd] ch=' + channelId + ' KID not found in MPD — ClearKey injection skipped')
 
-  // Strip PlayReady (9a04f079) and Widevine PSSH (edef8ba9).
-  // Widevine PSSH is protobuf; ClearKey needs keyids format — mixing them causes error 6012.
+  // Strip PlayReady (9a04f079) and Widevine PSSH (edef8ba9) ContentProtection elements.
+  // Also strip PSSH blobs — Widevine PSSH may be embedded inside mp4protection:2011.
   out = out.replace(/<ContentProtection[^>]*9a04f079[^>]*(?:\/>|>[\s\S]*?<\/ContentProtection>)/gi, '')
   out = out.replace(/<ContentProtection[^>]*edef8ba9[^>]*(?:\/>|>[\s\S]*?<\/ContentProtection>)/gi, '')
+  out = out.replace(/<(?:\w+:)?pssh[^>]*>[\s\S]*?<\/(?:\w+:)?pssh>/gi, '')
 
   if (!kid) return out
 
