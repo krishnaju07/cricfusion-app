@@ -26,6 +26,8 @@ async function fetchMpd(id, subscriberId, token) {
     headers: { 'Authorization': `Bearer ${token}`, 'subscriberId': subscriberId },
   })
   const data = await r.json()
+  console.log('[tp-mpd] content API data keys:', JSON.stringify(Object.keys(data?.data || {})))
+  console.log('[tp-mpd] content API data:', JSON.stringify(data?.data))
   if (!data.data?.dashPlayreadyPlayUrl) throw new Error('dashPlayreadyPlayUrl not found')
 
   let url = decryptUrl(data.data.dashPlayreadyPlayUrl)
@@ -79,8 +81,10 @@ async function extractPssh(mpdText) {
 }
 
 function rewriteMpd(text, baseUrl, pssh) {
-  // Rewrite relative dash/ segment paths to absolute
-  let out = text.replace(/\bdash\//g, `${baseUrl}/dash/`)
+  // Rewrite only SegmentTemplate initialization/media attributes that start with
+  // a relative "dash/" prefix. Using a global /\bdash\//g regex was corrupting
+  // the <BaseURL> element's ?hdnea=...~acl=.../output/dash/ query string.
+  let out = text.replace(/((?:initialization|media)=")dash\//g, `$1${baseUrl}/dash/`)
 
   if (!pssh) return out
 
@@ -119,7 +123,10 @@ export default async function handler(req, res) {
   try {
     const { mpdUrl, mpdText } = await fetchMpd(id, subscriberId, token)
 
-    const baseUrl = mpdUrl.substring(0, mpdUrl.lastIndexOf('/'))
+    // Strip query string before computing base — mpdUrl may end with ?hdnea=...~acl=.../dash/
+    // causing lastIndexOf('/') to land inside the query string and produce a garbage baseUrl.
+    const urlPath = mpdUrl.split('?')[0]
+    const baseUrl = urlPath.substring(0, urlPath.lastIndexOf('/'))
     const pssh = await extractPssh(mpdText)
     const processed = rewriteMpd(mpdText, baseUrl, pssh)
 

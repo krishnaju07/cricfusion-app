@@ -152,6 +152,32 @@ function tpApiDevProxy() {
   }
 }
 
+// Shared JWKS normalizer (mirrors api/tp-license.js).
+// Browser's ClearKey EME requires exact base64url encoding for kid/k;
+// UUID-format or hex values produce error 6008 LICENSE_RESPONSE_REJECTED.
+function _hexToBase64url(hex) {
+  return Buffer.from(hex.replace(/-/g, ''), 'hex')
+    .toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+}
+function _toBase64url(s) {
+  if (!s) return s
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)) return _hexToBase64url(s)
+  if (/^[0-9a-f]{32,}$/i.test(s)) return _hexToBase64url(s)
+  return s.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+}
+function _normalizeJwks(raw, requestedKids) {
+  if (!raw) return null
+  if (Array.isArray(raw?.keys)) {
+    return { keys: raw.keys.map(k => ({ kty: 'oct', k: _toBase64url(k.k || k.key || k.KEY), kid: _toBase64url(k.kid || k.KID) })).filter(k => k.k), type: 'temporary' }
+  }
+  const keyVal = raw?.k || raw?.key || raw?.KEY
+  if (keyVal) {
+    const kid = raw?.kid || raw?.KID || requestedKids?.[0]
+    return { keys: [{ kty: 'oct', k: _toBase64url(keyVal), kid: _toBase64url(kid) }], type: 'temporary' }
+  }
+  return null
+}
+
 // Dev-time proxy for /api/tp-license?id=... — ClearKey license server
 function tpLicenseDevProxy() {
   return {
@@ -165,23 +191,29 @@ function tpLicenseDevProxy() {
         if (req.method === 'OPTIONS') return res.end()
         const id = new URL(req.url, 'http://localhost').searchParams.get('id')
         if (!id) { res.statusCode = 400; return res.end('Missing id') }
-        // Read body — Shaka POSTs a ClearKey JWKS request: {"kids":[...],"type":"temporary"}
         let body = '{}'
         if (req.method === 'POST') {
           body = await new Promise((resolve) => {
             const chunks = []; req.on('data', (c) => chunks.push(c)); req.on('end', () => resolve(Buffer.concat(chunks).toString()))
           })
         }
+        let requestedKids = []
+        try { requestedKids = JSON.parse(body).kids || [] } catch {}
         try {
           const r = await fetch(`https://tp.drmlive-01.workers.dev?id=${encodeURIComponent(id)}`, {
             method: 'POST',
             headers: { 'User-Agent': 'Mozilla/5.0', 'Origin': 'https://watch.tataplay.com', 'Referer': 'https://watch.tataplay.com/', 'Content-Type': 'application/json' },
             body,
           })
-          const json = await r.json()
+          const raw = await r.json()
+          console.log('[tp-license-dev] worker raw:', JSON.stringify(raw))
+          if (raw === null) { res.statusCode = 404; return res.end('Key not found') }
+          const jwks = _normalizeJwks(raw, requestedKids)
+          if (!jwks?.keys?.length) { res.statusCode = 502; return res.end('Could not normalize key') }
+          console.log('[tp-license-dev] normalized:', JSON.stringify(jwks))
           res.setHeader('Content-Type', 'application/json')
-          return res.end(JSON.stringify(json))
-        } catch (e) { res.statusCode = 502; return res.end('tp-license error') }
+          return res.end(JSON.stringify(jwks))
+        } catch (e) { res.statusCode = 502; return res.end('tp-license error: ' + e.message) }
       })
     },
   }

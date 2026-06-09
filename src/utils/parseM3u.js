@@ -23,6 +23,41 @@ function groupToCategory(group) {
   return 'multi'
 }
 
+// Channel-name → category for known Indian sports channels.
+// Takes priority over group-title so e.g. "Sony Sports Ten 4" (football)
+// isn't lumped into 'cricket' just because group-title="Sports".
+const NAME_CATEGORY = [
+  // Cricket-primary
+  [/star sports (1|2|3|first|select 1)\b/i,    'cricket'],
+  [/\bdd sports\b/i,                            'cricket'],
+  [/\bsony (sports )?six\b/i,                   'cricket'],
+  [/sports\s*18\b/i,                            'cricket'],
+  [/\bstar cricket\b/i,                         'cricket'],
+  // Football-primary
+  [/sony sports ten\s*[45]\b/i,                 'football'],
+  [/\bstar sports.*football\b/i,                'football'],
+  // Tennis-primary
+  [/sony sports ten\s*3\b/i,                    'tennis'],
+  [/\beurosport\b/i,                            'tennis'],
+  // Formula 1 / Motorsport
+  [/star sports select\s*2\b/i,                 'formula1'],
+  [/\bf1 tv\b/i,                               'formula1'],
+  [/\bmotogp\b/i,                              'formula1'],
+  // Boxing
+  [/\bboxing tv\b/i,                            'boxing'],
+  // Multi-sport (broad nets — keep below specific ones)
+  [/sony sports ten\s*[12]\b/i,                 'cricket'],
+  [/star sports select\b/i,                     'multi'],
+  [/\bespn\b/i,                                'multi'],
+]
+
+function nameToCategory(name) {
+  for (const [re, cat] of NAME_CATEGORY) {
+    if (re.test(name)) return cat
+  }
+  return null
+}
+
 // Parse an M3U text into raw channel objects.
 // Handles #EXTINF, #KODIPROP license key/type, and the stream URL line.
 // Strips IPTV pipe-header suffixes (|key=val) from URLs.
@@ -77,7 +112,7 @@ export function mapM3uChannel(ch, id) {
     id,
     key:          `tp_${ch.tvgId || id}`,
     name:         ch.name,
-    category:     groupToCategory(ch.group),
+    category:     nameToCategory(ch.name) || groupToCategory(ch.group),
     currentMatch: ch.name,
     thumbnail:    ch.logo || null,
     logo:         ch.name.replace(/\s+HD\s*$/i, '').slice(0, 4).toUpperCase(),
