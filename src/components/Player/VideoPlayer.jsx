@@ -1004,7 +1004,6 @@ export default function VideoPlayer({ channel }) {
               <p className="text-white font-semibold text-base">{state.error}</p>
               {channel?.sonyLivUrl ? (
                 <div className="space-y-2">
-                  <p className="text-white/40 text-sm">Stream unavailable via proxy.</p>
                   <a
                     href={channel.sonyLivUrl}
                     target="_blank"
