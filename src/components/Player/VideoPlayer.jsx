@@ -438,7 +438,11 @@ export default function VideoPlayer({ channel }) {
     }
 
     // ── HLS via hls.js ──
-    if (isHLS && Hls.isSupported()) {
+    // Skip hls.js for Sony LIV on Safari — Safari's native <video> plays HLS
+    // directly from Akamai without CORS, while hls.js XHR is CORS-blocked.
+    const canNativeSafariHLS = video.canPlayType('application/vnd.apple.mpegurl') !== ''
+    const useSafariNative = isHLS && channel.originalUrl && canNativeSafariHLS
+    if (isHLS && Hls.isSupported() && !useSafariNative) {
       const hls = new Hls({ enableWorker: true, lowLatencyMode: true, backBufferLength: 90 })
       hlsRef.current = hls
       hls.loadSource(channel.url)
