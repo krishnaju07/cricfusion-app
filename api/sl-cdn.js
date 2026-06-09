@@ -55,6 +55,12 @@ export default async function handler(req) {
 
   const upstream = `https://${akamaiHost}/${path}${rawQs ? '?' + rawQs : ''}`
 
+  // Forward the original client IP so Akamai's CDN IP-allowlist check
+  // sees the browser's Indian residential IP instead of Cloudflare's IP.
+  const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || req.headers.get('x-real-ip')
+    || req.headers.get('cf-connecting-ip')
+
   let upstreamResp
   try {
     upstreamResp = await fetch(upstream, {
@@ -73,6 +79,7 @@ export default async function handler(req) {
         'sec-fetch-site': 'cross-site',
         'sec-fetch-storage-access': 'active',
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36',
+        ...(clientIp && { 'x-forwarded-for': clientIp }),
       },
     })
   } catch (err) {
@@ -87,6 +94,12 @@ export default async function handler(req) {
     'Access-Control-Allow-Origin': '*',
     'Cache-Control': 'no-cache, no-store',
     'Content-Type': ct,
+  }
+
+  // Pass non-2xx responses through without rewriting (avoids running
+  // rewriteManifest over Akamai's HTML error pages).
+  if (!upstreamResp.ok) {
+    return new Response(upstreamResp.body, { status: upstreamResp.status, headers: responseHeaders })
   }
 
   if (ct.includes('mpegurl') || path.endsWith('.m3u8')) {
