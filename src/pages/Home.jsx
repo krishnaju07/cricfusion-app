@@ -19,8 +19,12 @@ const TP_SECTIONS = [
   { id: 'multi',      label: 'Multi Sports', icon: '🎯' },
 ]
 
+const ROW_LIMIT = 8   // cards visible before "See all"
+const GRID_PAGE = 20  // cards per page in expanded grid
+
 function TpGroupedView({ channels }) {
   const [expanded, setExpanded] = useState(null)
+  const [gridPage, setGridPage] = useState(1)
 
   const grouped = useMemo(() => {
     const map = {}
@@ -34,14 +38,17 @@ function TpGroupedView({ channels }) {
 
   const sections = TP_SECTIONS.filter((s) => grouped[s.id]?.length)
 
+  const handleExpand = (id) => {
+    if (expanded === id) { setExpanded(null) }
+    else { setExpanded(id); setGridPage(1) }
+  }
+
   if (!sections.length) return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-      className="flex flex-col items-center justify-center py-24 text-center"
-    >
+    <div className="flex flex-col items-center justify-center py-24 text-center">
       <div className="text-5xl mb-4">📡</div>
       <p className="text-white/50 text-lg font-medium">No Tata Play channels</p>
       <p className="text-white/30 text-sm mt-1">Add your M3U playlist in Account settings</p>
-    </motion.div>
+    </div>
   )
 
   return (
@@ -49,6 +56,9 @@ function TpGroupedView({ channels }) {
       {sections.map((sec) => {
         const isExpanded = expanded === sec.id
         const list = grouped[sec.id]
+        const gridVisible = list.slice(0, gridPage * GRID_PAGE)
+        const hasMore = gridVisible.length < list.length
+
         return (
           <div key={sec.id}>
             {/* Section header */}
@@ -58,42 +68,44 @@ function TpGroupedView({ channels }) {
               <span className="text-[10px] bg-white/[0.07] text-white/40 px-1.5 py-0.5 rounded-full font-semibold">
                 {list.length}
               </span>
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setExpanded(isExpanded ? null : sec.id)}
-                className="ml-auto text-[12px] font-semibold text-brand-400 hover:text-brand-300 transition-colors flex items-center gap-1"
-              >
-                {isExpanded ? 'Collapse' : 'See all'}
-                <motion.span
-                  animate={{ rotate: isExpanded ? 90 : 0 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                  className="inline-block"
-                >›</motion.span>
-              </motion.button>
+              {list.length > ROW_LIMIT && (
+                <button
+                  onClick={() => handleExpand(sec.id)}
+                  className="ml-auto text-[12px] font-semibold text-brand-400 active:text-brand-300"
+                >
+                  {isExpanded ? 'Collapse ↑' : `See all ${list.length} →`}
+                </button>
+              )}
             </div>
 
-            {/* Horizontal scroll row */}
+            {/* Horizontal scroll row — capped at ROW_LIMIT */}
             {!isExpanded && (
               <div className="flex gap-3 overflow-x-auto no-scrollbar px-4 md:px-6 pb-1">
-                {list.map((ch, i) => (
+                {list.slice(0, ROW_LIMIT).map((ch, i) => (
                   <div key={ch.id} className="flex-shrink-0 w-44">
-                    <ChannelCard channel={ch} index={i} />
+                    <ChannelCard channel={ch} index={i} animated={false} />
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Expanded grid */}
+            {/* Expanded grid — paged */}
             {isExpanded && (
-              <motion.div
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 px-4 md:px-6"
-              >
-                {list.map((ch, i) => (
-                  <ChannelCard key={ch.id} channel={ch} index={i} />
-                ))}
-              </motion.div>
+              <div className="px-4 md:px-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                  {gridVisible.map((ch, i) => (
+                    <ChannelCard key={ch.id} channel={ch} index={i} animated={false} />
+                  ))}
+                </div>
+                {hasMore && (
+                  <button
+                    onClick={() => setGridPage((p) => p + 1)}
+                    className="mt-4 w-full py-2.5 rounded-xl border border-white/[0.08] text-white/40 text-sm hover:text-white/70 hover:border-white/20 transition-colors"
+                  >
+                    Load more ({list.length - gridVisible.length} remaining)
+                  </button>
+                )}
+              </div>
             )}
           </div>
         )

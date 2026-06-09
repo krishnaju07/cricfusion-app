@@ -255,6 +255,65 @@ function tpMpdProxyDev() {
   }
 }
 
+// Dev-time proxy for /api/tp-wv-license — Widevine license proxy for Tata Play bpaita channels.
+// Reads raw binary Widevine challenge, calls content API for Irdeto URL, forwards challenge.
+function tpWvLicenseDevProxy() {
+  return {
+    name: 'tp-wv-license-dev-proxy',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        if (!req.url?.startsWith('/api/tp-wv-license')) return next()
+        res.setHeader('Access-Control-Allow-Origin', '*')
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        res.setHeader('Access-Control-Allow-Headers', '*')
+        if (req.method === 'OPTIONS') { res.statusCode = 204; return res.end() }
+
+        const qs = new URL(req.url, 'http://localhost')
+        const id  = qs.searchParams.get('id')
+        const sub = qs.searchParams.get('sub')
+        const tok = qs.searchParams.get('tok')
+        if (!id || !sub || !tok) { res.statusCode = 400; return res.end('Missing params') }
+
+        // Read raw binary Widevine challenge before creating the mock request
+        const rawBody = await new Promise((resolve) => {
+          const chunks = []
+          req.on('data', (c) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)))
+          req.on('end', () => resolve(Buffer.concat(chunks)))
+        })
+
+        try {
+          const handlerUrl = pathToFileURL(nodePath.join(process.cwd(), 'api', 'tp-wv-license.js')).href + `?t=${Date.now()}`
+          const mod = await import(handlerUrl)
+
+          // Simulate Node.js req streaming so the handler's req.on('data') works
+          const mockReq = {
+            method: req.method,
+            query: { id, sub, tok },
+            headers: req.headers,
+            on(event, fn) {
+              if (event === 'data') process.nextTick(() => fn(rawBody))
+              else if (event === 'end') process.nextTick(() => fn())
+              return this
+            },
+          }
+          const mockRes = {
+            _status: 200, _headers: {},
+            status(c) { this._status = c; return this },
+            end(b)  { res.statusCode = this._status; res.end(b) },
+            send(b) { res.statusCode = this._status; res.end(b) },
+            json(b) { res.setHeader('Content-Type', 'application/json'); res.statusCode = this._status; res.end(JSON.stringify(b)) },
+            setHeader(k, v) { this._headers[k] = v; res.setHeader(k, v) },
+          }
+          await mod.default(mockReq, mockRes)
+        } catch (e) {
+          console.error('[tp-wv-license-dev]', e.message)
+          if (!res.headersSent) { res.statusCode = 502; res.end('Dev proxy error: ' + e.message) }
+        }
+      })
+    },
+  }
+}
+
 // Dev-time proxy for /api/m3u-proxy?url=... — fetches the M3U server-side
 function m3uDevProxy() {
   return {
@@ -284,7 +343,7 @@ function m3uDevProxy() {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), sonyLivDevProxy(), m3uDevProxy(), tpLicenseDevProxy(), tpMpdProxyDev(), tpApiDevProxy()],
+  plugins: [react(), sonyLivDevProxy(), m3uDevProxy(), tpLicenseDevProxy(), tpWvLicenseDevProxy(), tpMpdProxyDev(), tpApiDevProxy()],
   server: {
     proxy: {
       '/cf-sonyliv': {

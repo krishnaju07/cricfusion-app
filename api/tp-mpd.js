@@ -1,14 +1,13 @@
-// Full port of get-mpd.php:
+// Fetches and rewrites the Tata Play DASH manifest for Widevine playback:
 // 1. Calls Tata Play content API with subscriber auth to get encrypted MPD URL
-// 2. Decrypts URL via AES-128-ECB
-// 3. Follows ALL Akamai CDN redirects (redirect:follow) to get final URL + MPD
-// 4. Extracts Widevine PSSH → calls tp.secure-kid.workers.dev for KID
-// 5. Rewrites manifest: strips Widevine/PlayReady, injects ClearKey system ID
+// 2. Decrypts URL via AES-128-ECB (key: "aesEncryptionKey")
+// 3. Follows ALL Akamai CDN redirects to get the final URL + MPD text
+// 4. Strips PlayReady ContentProtection (Chrome uses Widevine — kept intact)
+// 5. Fixes relative "dash/" segment paths to absolute CDN URLs
 import crypto from 'crypto'
 
-const UA    = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36'
-const WATCH = 'https://watch.tataplay.com'
-const AES_KEY = Buffer.from('aesEncryptionKey') // 16 bytes = AES-128
+const UA      = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36'
+const AES_KEY = Buffer.from('aesEncryptionKey')
 
 function decryptUrl(encryptedUrl) {
   const clean = encryptedUrl.replace(/#.*$/, '').trim()
@@ -26,8 +25,6 @@ async function fetchMpd(id, subscriberId, token) {
     headers: { 'Authorization': `Bearer ${token}`, 'subscriberId': subscriberId },
   })
   const data = await r.json()
-  console.log('[tp-mpd] content API data keys:', JSON.stringify(Object.keys(data?.data || {})))
-  console.log('[tp-mpd] content API data:', JSON.stringify(data?.data))
   if (!data.data?.dashPlayreadyPlayUrl) throw new Error('dashPlayreadyPlayUrl not found')
 
   let url = decryptUrl(data.data.dashPlayreadyPlayUrl)
@@ -50,64 +47,12 @@ async function fetchMpd(id, subscriberId, token) {
   return { mpdUrl: mpdResp.url || url, mpdText: await mpdResp.text() }
 }
 
-async function extractPssh(mpdText) {
-  const wvMatch = mpdText.match(/schemeIdUri="[^"]*edef8ba9[^"]*"[^>]*>[\s\S]*?<cenc:pssh[^>]*>([\s\S]*?)<\/cenc:pssh>/i)
-  const wvPssh = wvMatch?.[1]?.trim() || null
-  const prMatch = mpdText.match(/schemeIdUri="[^"]*9a04f079[^"]*"[^>]*>[\s\S]*?<cenc:pssh[^>]*>([\s\S]*?)<\/cenc:pssh>/i)
-  const prPssh = prMatch?.[1]?.trim() || null
-
-  // Primary: KID already present in the MPD (mp4protection cenc:default_KID)
-  const directKid = mpdText.match(/cenc:default_KID="([0-9a-f-]{36})"/i)?.[1]
-  if (directKid) return { wvPssh, prPssh, kid: directKid }
-
-  if (!wvPssh) return { wvPssh, prPssh, kid: null }
-
-  // Fallback: derive KID from Widevine PSSH via secure-kid worker
-  try {
-    const psshHex = Buffer.from(wvPssh, 'base64').toString('hex')
-    const kidResp = await fetch('https://tp.secure-kid.workers.dev/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pssh: psshHex }),
-    })
-    const kidData = await kidResp.json()
-    const h = kidData.encryptedKID
-    if (!h) return { wvPssh, prPssh, kid: null }
-    const kid = [h.slice(0, 8), h.slice(8, 12), h.slice(12, 16), h.slice(16, 20), h.slice(20)].join('-')
-    return { wvPssh, prPssh, kid }
-  } catch {
-    return { wvPssh, prPssh, kid: null }
-  }
-}
-
-function rewriteMpd(text, baseUrl, pssh) {
-  // Rewrite only SegmentTemplate initialization/media attributes that start with
-  // a relative "dash/" prefix. Using a global /\bdash\//g regex was corrupting
-  // the <BaseURL> element's ?hdnea=...~acl=.../output/dash/ query string.
+function rewriteMpd(text, baseUrl) {
+  // Fix relative "dash/" prefixes in SegmentTemplate initialization/media attributes.
+  // Scoped to those attributes only — avoids corrupting the <BaseURL> query string.
   let out = text.replace(/((?:initialization|media)=")dash\//g, `$1${baseUrl}/dash/`)
-
-  if (!pssh) return out
-
-  // Remove Widevine (edef8ba9) and PlayReady (9a04f079) ContentProtection elements.
-  // Shaka prefers Widevine when present and throws NO_LICENSE_SERVER_GIVEN (6012)
-  // since we only support ClearKey. Removing them forces Shaka to use our ClearKey entry.
-  out = out.replace(/<ContentProtection[^>]*(?:edef8ba9|9a04f079)[^>]*(?:\/>|>[\s\S]*?<\/ContentProtection>)/gi, '')
-
-  // Only inject cenc:default_KID into mp4protection if not already present
-  if (pssh.kid && !text.includes('cenc:default_KID')) {
-    out = out.replace('mp4protection:2011"', `mp4protection:2011" cenc:default_KID="${pssh.kid}"`)
-  }
-
-  // Inject ClearKey ContentProtection before EVERY mp4protection element so that
-  // all AdaptationSets (audio + video) declare the ClearKey system. Using only
-  // .replace() (first match) leaves the video AdaptationSet without ClearKey,
-  // causing Shaka to fall back to Widevine (error 6012).
-  if (pssh.kid) {
-    const ck = `<ContentProtection schemeIdUri="urn:uuid:e2719d58-a985-b3c9-781a-b030af78d30e" value="ClearKey1.0"><cenc:default_KID>${pssh.kid}</cenc:default_KID></ContentProtection>\n        `
-    out = out.replace(/<ContentProtection schemeIdUri="urn:mpeg:dash:mp4protection/g,
-      `${ck}<ContentProtection schemeIdUri="urn:mpeg:dash:mp4protection`)
-  }
-
+  // Strip PlayReady (9a04f079) — Chrome uses Widevine (edef8ba9) which is kept intact.
+  out = out.replace(/<ContentProtection[^>]*9a04f079[^>]*(?:\/>|>[\s\S]*?<\/ContentProtection>)/gi, '')
   return out
 }
 
@@ -123,12 +68,11 @@ export default async function handler(req, res) {
   try {
     const { mpdUrl, mpdText } = await fetchMpd(id, subscriberId, token)
 
-    // Strip query string before computing base — mpdUrl may end with ?hdnea=...~acl=.../dash/
-    // causing lastIndexOf('/') to land inside the query string and produce a garbage baseUrl.
+    // Strip query string before computing base — mpdUrl ends with ?hdnea=...~acl=.../dash/
+    // so lastIndexOf('/') would land inside the query string without this split.
     const urlPath = mpdUrl.split('?')[0]
     const baseUrl = urlPath.substring(0, urlPath.lastIndexOf('/'))
-    const pssh = await extractPssh(mpdText)
-    const processed = rewriteMpd(mpdText, baseUrl, pssh)
+    const processed = rewriteMpd(mpdText, baseUrl)
 
     res.setHeader('Content-Type', 'application/dash+xml')
     res.setHeader('Cache-Control', 'no-cache, no-store')

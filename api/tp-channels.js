@@ -62,7 +62,10 @@ export default async function handler(req, res) {
           score:        null,
           url,
           clearKey:     null,
-          licenseServer: `/api/tp-license?id=${ch.id}`,
+          drmSystem:    isBpaita ? 'widevine' : 'clearkey',
+          licenseServer: isBpaita
+            ? `/api/tp-wv-license?id=${ch.id}&sub=${encodeURIComponent(subscriberId || '')}&tok=${encodeURIComponent(token || '')}`
+            : `/api/tp-license?id=${ch.id}`,
           reqHeaders:   null,
           quality:      ['Auto'],
         }

@@ -222,9 +222,10 @@ export default function VideoPlayer({ channel }) {
           clearKeys: { [channel.clearKey.keyId]: channel.clearKey.key },
         }
       } else if (channel.licenseServer) {
+        const isWv = channel.drmSystem === 'widevine'
         cfg.drm = {
-          servers: { 'org.w3.clearkey': channel.licenseServer },
-          keySystemsMapping: { 'com.widevine.alpha': 'org.w3.clearkey' },
+          servers: { [isWv ? 'com.widevine.alpha' : 'org.w3.clearkey']: channel.licenseServer },
+          ...(isWv ? {} : { keySystemsMapping: { 'com.widevine.alpha': 'org.w3.clearkey' } }),
         }
       }
       player.configure(cfg)
