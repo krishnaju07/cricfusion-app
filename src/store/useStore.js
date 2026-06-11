@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import {
-  CHANNEL_ORDER, STATIC_CHANNELS, mapApiChannel,
+  CHANNEL_ORDER, STATIC_CHANNELS, FIFA_CHANNELS, mapApiChannel,
   DYNAMIC_CHANNEL_IDS, mapDynamicChannel, mapFanCodeChannel, mapSonyLivChannel,
 } from '../data/channels'
 import { parseM3u, mapM3uChannel } from '../utils/parseM3u'
@@ -101,7 +101,7 @@ export const useStore = create((set, get) => ({
   },
 
   // ── Channels (loaded from API) ─────────────────────────────────────────
-  channels: STATIC_CHANNELS,         // start with static; API channels prepended on load
+  channels: [...STATIC_CHANNELS, ...FIFA_CHANNELS],  // start with static; API channels prepended on load
   channelsLoading: false,
   channelsError: null,
   lastFetched: null,
@@ -212,7 +212,7 @@ export const useStore = create((set, get) => ({
       }
 
       set({
-        channels: [...apiChannels, ...dynamicChannels, ...STATIC_CHANNELS, ...fanCodeChannels, ...sonyLivChannels, ...tpApiChannels, ...m3uChannels],
+        channels: [...apiChannels, ...dynamicChannels, ...STATIC_CHANNELS, ...FIFA_CHANNELS, ...fanCodeChannels, ...sonyLivChannels, ...tpApiChannels, ...m3uChannels],
         channelsLoading: false,
         lastFetched: Date.now(),
       })

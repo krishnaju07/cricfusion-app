@@ -247,6 +247,30 @@ export function mapSonyLivChannel(match, id) {
 }
 
 // ── Static channels (fixed URLs, not in any API) ─────────────────────────────
+export const FIFA_CHANNELS = [
+  {
+    id: 301,
+    key: 'fifa_mex_rsa',
+    name: 'FIFA 2026 — Mexico vs South Africa',
+    category: 'fifa2026',
+    currentMatch: 'Mexico vs South Africa — Live',
+    thumbnail: T('1574629810360-7efbbe195018'),
+    logo: 'FIFA',
+    isLive: true,
+    viewers: '—',
+    badge: 'HD',
+    language: 'English',
+    description: 'FIFA World Cup 2026 — Mexico vs South Africa',
+    score: null,
+    url: 'https://otte.cache.aiv-cdn.net/bom-nitro/live/clients/dash/enc/h9urpo3cwb/out/v1/fde190f369484bc6b6117cc16cd82a9f/cenc.mpd',
+    clearKey: {
+      keyId: 'c4088f5f265f9de50cffd80bf89308b7',
+      key:   '2c4d2239d96d532b4ec2050653611003',
+    },
+    quality: ['Auto', '1080p', '720p', '480p'],
+  },
+]
+
 export const STATIC_CHANNELS = [
   {
     id: 101,
@@ -291,6 +315,7 @@ export const STATIC_CHANNELS = [
 
 export const categories = [
   { id: 'all',         label: 'Trending',     icon: '🔥' },
+  { id: 'fifa2026',    label: 'FIFA 2026',    icon: '🏆' },
   { id: 'fancode',     label: 'FanCode',      icon: '⚡' },
   { id: 'sonyliv',     label: 'Sony LIV',     icon: '📺' },
   ...(FEATURES.TATAPLAY ? [{ id: 'tataplay', label: 'Tata Play', icon: '📡' }] : []),
