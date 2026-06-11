@@ -259,7 +259,7 @@ export function mapFifaChannel(s) {
     logo:         s.logo,
     isLive:       true,
     viewers:      '—',
-    badge:        'HD',
+    badge:        s.badge ?? 'HD',
     language:     s.language,
     description:  s.description,
     score:        null,
