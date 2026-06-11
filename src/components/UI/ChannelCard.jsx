@@ -127,7 +127,7 @@ export default function ChannelCard({ channel, index = 0, animated = true }) {
         {/* ── Card body ── */}
         <div className="px-3 pt-2.5 pb-3 space-y-1.5">
           <p className="text-white font-semibold text-sm leading-snug line-clamp-2">
-            {channel.currentMatch}
+            {channel.category === 'fifa2026' ? channel.name : channel.currentMatch}
           </p>
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 min-w-0">
@@ -139,7 +139,9 @@ export default function ChannelCard({ channel, index = 0, animated = true }) {
                   {channel.logo?.slice(0, 3)}
                 </span>
               </div>
-              <span className="text-white/35 text-xs truncate">{channel.name}</span>
+              <span className="text-white/35 text-xs truncate">
+                {channel.category === 'fifa2026' ? channel.currentMatch : channel.name}
+              </span>
             </div>
             {channel.viewers && channel.viewers !== '—' && (
               <div className="flex items-center gap-1 text-white/25 text-[11px] flex-shrink-0">

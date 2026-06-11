@@ -12,7 +12,7 @@ const FIFA_STREAMS = [
   {
     id: 301,
     key: 'fifa_mex_rsa',
-    name: 'FIFA 2026 — Mexico vs South Africa',
+    name: 'FIFA 2026',
     match: 'Mexico vs South Africa — Live',
     logo: 'FIFA',
     language: 'English',
@@ -24,7 +24,7 @@ const FIFA_STREAMS = [
   {
     id: 302,
     key: 'fifa_opening_tsn3',
-    name: 'FIFA Opening — TSN 3',
+    name: 'TSN 3',
     match: 'FIFA World Cup Opening Ceremony — Live',
     logo: 'TSN',
     language: 'English',
@@ -36,7 +36,7 @@ const FIFA_STREAMS = [
   {
     id: 303,
     key: 'fifa_opening_sportotv',
-    name: 'FIFA Opening — Sporto TV',
+    name: 'Sporto TV',
     match: 'FIFA World Cup Opening Ceremony — Live',
     logo: 'SPT',
     language: 'English',
@@ -48,7 +48,7 @@ const FIFA_STREAMS = [
   {
     id: 304,
     key: 'fifa_opening_telemundo',
-    name: 'FIFA Opening — Telemundo',
+    name: 'Telemundo',
     match: 'FIFA World Cup Opening Ceremony — Live',
     logo: 'TMD',
     language: 'Spanish',
@@ -60,7 +60,7 @@ const FIFA_STREAMS = [
   {
     id: 305,
     key: 'fifa_opening_tsn',
-    name: 'FIFA Opening — TSN',
+    name: 'TSN',
     match: 'FIFA World Cup Opening Ceremony — Live',
     logo: 'TSN',
     language: 'English',
@@ -72,7 +72,7 @@ const FIFA_STREAMS = [
   {
     id: 306,
     key: 'fifa_opening_worldcuptv',
-    name: 'FIFA Opening — World Cup TV',
+    name: 'World Cup TV',
     match: 'FIFA World Cup Opening Ceremony — Live',
     logo: 'WCT',
     language: 'English',
