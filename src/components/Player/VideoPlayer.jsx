@@ -666,13 +666,35 @@ export default function VideoPlayer({ channel }) {
   // ── Fullscreen / PiP events ────────────────────────────────────────────
   useEffect(() => {
     const onFS = () => {
-      const isFS = !!document.fullscreenElement
+      const isFS = !!(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement
+      )
       update({ fullscreen: isFS })
-      // Unlock orientation whenever fullscreen exits (Escape key, browser back, etc.)
       if (!isFS) try { screen.orientation?.unlock() } catch {}
     }
-    document.addEventListener('fullscreenchange', onFS)
-    return () => document.removeEventListener('fullscreenchange', onFS)
+    document.addEventListener('fullscreenchange',       onFS)
+    document.addEventListener('webkitfullscreenchange', onFS)
+    document.addEventListener('mozfullscreenchange',    onFS)
+    document.addEventListener('MSFullscreenChange',     onFS)
+
+    // iOS Safari fires these on the video element, not the document
+    const vid = videoRef.current
+    const onIosEnter = () => update({ fullscreen: true })
+    const onIosExit  = () => update({ fullscreen: false })
+    vid?.addEventListener('webkitbeginfullscreen', onIosEnter)
+    vid?.addEventListener('webkitendfullscreen',   onIosExit)
+
+    return () => {
+      document.removeEventListener('fullscreenchange',       onFS)
+      document.removeEventListener('webkitfullscreenchange', onFS)
+      document.removeEventListener('mozfullscreenchange',    onFS)
+      document.removeEventListener('MSFullscreenChange',     onFS)
+      vid?.removeEventListener('webkitbeginfullscreen', onIosEnter)
+      vid?.removeEventListener('webkitendfullscreen',   onIosExit)
+    }
   }, [])
 
   useEffect(() => {
@@ -867,14 +889,40 @@ export default function VideoPlayer({ channel }) {
   }, [])
 
   const toggleFullscreen = useCallback(async () => {
-    const el = containerRef.current; if (!el) return
-    if (document.fullscreenElement) {
+    const el  = containerRef.current
+    const vid = videoRef.current
+    if (!el) return
+
+    const isFs = !!(
+      document.fullscreenElement ||
+      document.webkitFullscreenElement ||
+      document.mozFullScreenElement ||
+      document.msFullscreenElement
+    )
+
+    if (isFs) {
       try { screen.orientation?.unlock() } catch {}
-      await document.exitFullscreen().catch(() => {})
+      const exit =
+        document.exitFullscreen?.bind(document) ||
+        document.webkitExitFullscreen?.bind(document) ||
+        document.mozCancelFullScreen?.bind(document) ||
+        document.msExitFullscreen?.bind(document)
+      await exit?.().catch(() => {})
     } else {
-      await el.requestFullscreen().catch(() => {})
-      // Lock to landscape after fullscreen is established — works on Android Chrome.
-      // iOS Safari ignores this silently (it handles rotation natively).
+      // 1. Standard API
+      if (el.requestFullscreen) {
+        await el.requestFullscreen().catch(() => {})
+      // 2. WebKit (older Android / Samsung browser)
+      } else if (el.webkitRequestFullscreen) {
+        await el.webkitRequestFullscreen().catch(() => {})
+      // 3. Mozilla
+      } else if (el.mozRequestFullScreen) {
+        await el.mozRequestFullScreen().catch(() => {})
+      // 4. iOS Safari — only the <video> element itself supports native fullscreen
+      } else if (vid?.webkitEnterFullscreen) {
+        vid.webkitEnterFullscreen()
+        return   // iOS manages its own fullscreen state; no orientation lock needed
+      }
       try { await screen.orientation?.lock('landscape') } catch {}
     }
   }, [])
