@@ -293,15 +293,15 @@ export default function VideoPlayer({ channel }) {
       // DRM: ClearKey (inline keys or license server)
       const cfg = {
         streaming: {
-          lowLatencyMode:  false,   // prioritise smooth decode over latency for all streams
-          bufferingGoal:   is4K ? 60 : 30,  // deep buffer for all; extra deep for 4K
-          rebufferingGoal: is4K ? 10 : 5,   // wait for enough data before starting playback
-          bufferBehind:    30,
+          lowLatencyMode:  false,
+          bufferingGoal:   is4K ? 30 : 15,  // reduced — less fill needed before playback feels smooth
+          rebufferingGoal: is4K ? 4  : 2,   // start playback sooner after a stall
+          bufferBehind:    20,
           stallEnabled:    true,
-          stallThreshold:  0.5,     // detect stalls quickly
-          stallSkip:       0.1,     // micro-skip to escape decoder deadlocks
+          stallThreshold:  0.5,
+          stallSkip:       0.1,
         },
-        abr: { enabled: true, defaultBandwidthEstimate: 8_000_000 },
+        abr: { enabled: true, defaultBandwidthEstimate: 4_000_000 },  // conservative start, let ABR ramp up
       }
       if (channel.clearKey) {
         cfg.drm = {
@@ -428,27 +428,22 @@ export default function VideoPlayer({ channel }) {
           .map(({ language, role }) => ({ id: language, label: formatLangLabel(language), role }))
         const activeAudio = player.getAudioLanguage?.() ?? null
 
-        // Immediately lock to highest-bitrate variant — skip ABR warmup.
-        // ABR will re-engage if the user selects Auto later.
-        const allTracks = player.getVariantTracks()
-        const best = allTracks.reduce((a, b) => ((b.bandwidth ?? 0) > (a.bandwidth ?? 0) ? b : a), allTracks[0])
-        const shakaConn = navigator.connection || navigator.mozConnection || navigator.webkitConnection
-        const shakaDl = shakaConn?.downlink ?? 10
-        const shakaFast = shakaDl >= 4 || shakaConn?.effectiveType === '4g'
-        if (best && shakaFast) {
-          player.configure({ abr: { enabled: false } })
-          player.selectVariantTrack(best, true)
-          update({ actualHeight: best.height ?? 0 })
-
-          if (!is4K) {
-            // Non-4K: re-enable ABR after 8 s with a quality floor
+        // Only apply mid-tier start when Auto is selected — specific quality preferences
+        // are applied by the preferredQuality effect and must not be overridden here.
+        if (preferredQuality === 'Auto') {
+          const allTracks = player.getVariantTracks()
+          const sorted = [...allTracks].sort((a, b) => (a.bandwidth ?? 0) - (b.bandwidth ?? 0))
+          const midIdx  = Math.floor(sorted.length / 2)
+          const starter = sorted[midIdx] ?? sorted[0]
+          if (starter) {
+            player.configure({ abr: { enabled: false } })
+            player.selectVariantTrack(starter, true)
+            update({ actualHeight: starter.height ?? 0 })
             setTimeout(() => {
               if (!shakaRef.current) return
-              const minHeight = best.height ? Math.max(best.height - 360, 480) : 480
-              shakaRef.current.configure({ abr: { enabled: true }, restrictions: { minHeight } })
-            }, 8000)
+              shakaRef.current.configure({ abr: { enabled: true }, restrictions: {} })
+            }, 5000)
           }
-          // 4K: keep ABR permanently off — zero switching = zero stutter
         }
 
         // Stream is live — clear any stale error overlay immediately
@@ -524,15 +519,15 @@ export default function VideoPlayer({ channel }) {
 
       const hls = new Hls({
         enableWorker:            true,
-        lowLatencyMode:          false,                        // smooth decode over low latency
-        backBufferLength:        60,
-        maxBufferLength:         isFast ? 60  : 30,           // deep buffer for all streams
-        maxMaxBufferLength:      isFast ? 120 : 60,
-        abrEwmaDefaultEstimate:  isFast ? 8_000_000 : 1_500_000,
-        abrBandWidthFactor:      isFast ? 0.95 : 0.8,
-        abrBandWidthUpFactor:    isFast ? 0.9  : 0.7,
+        lowLatencyMode:          false,
+        backBufferLength:        30,
+        maxBufferLength:         isFast ? 30 : 15,            // smaller buffer = faster start, less stall recovery time
+        maxMaxBufferLength:      isFast ? 60 : 30,
+        abrEwmaDefaultEstimate:  4_000_000,                   // conservative start; ABR ramps up quickly
+        abrBandWidthFactor:      0.85,                        // stay a tier below measured peak to avoid stalls
+        abrBandWidthUpFactor:    0.75,
         capLevelToPlayerSize:    false,
-        fragLoadingMaxRetry:     6,                           // retry failed segments
+        fragLoadingMaxRetry:     6,
         fragLoadingRetryDelay:   500,
         manifestLoadingMaxRetry: 4,
       })
@@ -553,16 +548,10 @@ export default function VideoPlayer({ channel }) {
         })
         const levels = Object.values(bestByKey).sort((a, b) => (a.height ?? 0) - (b.height ?? 0))
 
-        // On fast connections: jump to highest bitrate immediately, skip ABR warmup.
-        // On slow connections: let ABR start conservatively and ramp up naturally.
-        const netConn = navigator.connection || navigator.mozConnection || navigator.webkitConnection
-        const dl = netConn?.downlink ?? 10
-        const fastNet = dl >= 4 || netConn?.effectiveType === '4g'
-        if (fastNet) {
-          const maxBitrateIdx = data.levels.reduce((best, l, i) =>
-            (l.bitrate ?? 0) > (data.levels[best]?.bitrate ?? 0) ? i : best, 0)
-          hls.startLevel = maxBitrateIdx
-          hls.currentLevel = maxBitrateIdx
+        // Mid-tier start only when Auto — specific quality preferences are applied
+        // by the preferredQuality effect immediately after and must not be pre-empted.
+        if (preferredQuality === 'Auto') {
+          hls.startLevel = Math.floor(data.levels.length / 2)
         }
 
         update({ qualityLevels: [{ id: -1, label: 'Auto' }, ...levels], loading: false })
