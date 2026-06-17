@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { WifiOff, Wifi, X, RefreshCw } from 'lucide-react'
 import { useStore } from './store/useStore'
+import { fetchSiteStatus } from './utils/site-status'
 import Header from './components/Layout/Header'
 import BottomNav from './components/Layout/BottomNav'
 import Home from './pages/Home'
@@ -11,6 +12,7 @@ import Sports from './pages/Sports'
 import Account from './pages/Account'
 import Watch from './pages/Watch'
 import MultiView from './pages/MultiView'
+import OwnerRef from './pages/OwnerRef'
 import { FEATURES } from './config/features'
 
 // Inner component so useLocation works inside BrowserRouter
@@ -37,6 +39,7 @@ function AppContent() {
               <Route path="/account"  element={<Account />} />
               <Route path="/watch/:id"   element={<Watch />} />
               {FEATURES.MULTIVIEW && <Route path="/multiview" element={<MultiView />} />}
+              <Route path="/cf-owner" element={<OwnerRef />} />
             </Routes>
           </motion.div>
         </AnimatePresence>
@@ -51,6 +54,22 @@ export default function App() {
   const [isOnline, setIsOnline]           = useState(navigator.onLine)
   const [offlineDismissed, setDismissed]  = useState(false)
   const [showOnlineToast, setOnlineToast] = useState(false)
+  const [maintenance, setMaintenance]     = useState(false)
+  const [maintMessage, setMaintMessage]   = useState('')
+
+  // Poll Gist for site-wide maintenance status
+  useEffect(() => {
+    async function check() {
+      const s = await fetchSiteStatus()
+      if (s) { setMaintenance(s.down); setMaintMessage(s.message || '') }
+    }
+    check()
+    const interval = setInterval(check, 5 * 60 * 1000) // re-check every 5 min
+    // Also re-check immediately when owner fires the console command
+    const handler = () => check()
+    window.addEventListener('cf_maintenance_change', handler)
+    return () => { clearInterval(interval); window.removeEventListener('cf_maintenance_change', handler) }
+  }, [])
 
   useEffect(() => {
     const html = document.documentElement
@@ -97,6 +116,62 @@ export default function App() {
       <BrowserRouter>
         <AppContent />
       </BrowserRouter>
+
+      {/* ── Maintenance overlay ── */}
+      <AnimatePresence>
+        {maintenance && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+            className="fixed inset-0 z-[300] flex flex-col items-center justify-center px-8 text-center"
+            style={{ background: 'radial-gradient(ellipse at 50% 30%, #0f1a0a 0%, #050505 70%)' }}
+          >
+            {/* Animated ring */}
+            <div className="relative mb-8">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ repeat: Infinity, duration: 8, ease: 'linear' }}
+                className="w-28 h-28 rounded-full border-2 border-dashed border-brand-500/20 absolute inset-0"
+              />
+              <motion.div
+                animate={{ rotate: -360 }}
+                transition={{ repeat: Infinity, duration: 5, ease: 'linear' }}
+                className="w-20 h-20 rounded-full border border-dashed border-brand-500/30 absolute inset-0 m-4"
+              />
+              <div className="w-28 h-28 rounded-full bg-dark-800 border border-brand-500/20 flex items-center justify-center">
+                <span className="text-4xl">🔧</span>
+              </div>
+            </div>
+
+            {/* Logo */}
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-7 h-7 rounded-lg gradient-brand flex items-center justify-center">
+                <span className="text-black font-black text-xs">CF</span>
+              </div>
+              <span className="text-white font-black text-lg tracking-tight">CricFusion</span>
+            </div>
+
+            <h1 className="text-white font-black text-2xl md:text-3xl mb-3 tracking-tight">
+              Under Maintenance
+            </h1>
+            <p className="text-white/40 text-sm leading-relaxed max-w-xs mb-8">
+              {maintMessage || "We're making things better for you. Be back shortly."}
+            </p>
+
+            {/* Pulsing status */}
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-500/10 border border-yellow-500/20">
+              <motion.span
+                animate={{ opacity: [1, 0.3, 1] }}
+                transition={{ repeat: Infinity, duration: 1.5 }}
+                className="w-2 h-2 bg-yellow-400 rounded-full"
+              />
+              <span className="text-yellow-400 text-xs font-bold tracking-wider uppercase">Maintenance in progress</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Offline overlay ── */}
       <AnimatePresence>
