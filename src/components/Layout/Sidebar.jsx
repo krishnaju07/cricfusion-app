@@ -171,7 +171,15 @@ export default function Sidebar({ currentChannelId }) {
   }, [grouped])
 
   useEffect(() => {
-    activeRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    const el = activeRef.current
+    if (!el) return
+    const parent = el.closest('.overflow-y-auto')
+    if (!parent) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); return }
+    const { top: eTop, bottom: eBot } = el.getBoundingClientRect()
+    const { top: pTop, bottom: pBot } = parent.getBoundingClientRect()
+    if (eTop < pTop || eBot > pBot) {
+      el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    }
   }, [currentChannelId])
 
   const totalLive = channels.filter((c) => c.isLive).length
