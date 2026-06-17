@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { Heart } from 'lucide-react'
 import HeroSection from '../components/UI/HeroSection'
@@ -115,9 +115,17 @@ function TpGroupedView({ channels }) {
   )
 }
 
+const QUALITY_FILTERS = [
+  { label: 'All',  value: null },
+  { label: 'HD',   value: 'HD' },
+  { label: '4K',   value: '4K' },
+  { label: '2K',   value: '2K' },
+]
+
 export default function Home() {
   const { activeCategory, searchQuery, channels, channelsLoading, favorites } = useStore()
   const { containerRef, pullY, refreshing, threshold } = usePullToRefresh(() => window.location.reload())
+  const [qualityFilter, setQualityFilter] = useState(null)
 
   const tpChannels = useMemo(
     () => channels.filter((c) => c.key?.startsWith('tp_')),
@@ -145,17 +153,27 @@ export default function Home() {
         .map((ch) => ({ ...ch, status: fifaStatusOf(ch.key) }))
         .sort((a, b) => FIFA_SORT_WEIGHT[a.status] - FIFA_SORT_WEIGHT[b.status])
     }
+    if (qualityFilter) {
+      if (qualityFilter === 'HD') {
+        list = list.filter((c) => {
+          const b = c.badge?.toUpperCase()
+          return b === 'HD' || b === '1080P' || b === '720P'
+        })
+      } else {
+        list = list.filter((c) => c.badge?.toUpperCase() === qualityFilter)
+      }
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
       list = list.filter(
         (c) =>
-          c.name.toLowerCase().includes(q) ||
-          c.currentMatch.toLowerCase().includes(q) ||
-          c.category.toLowerCase().includes(q)
+          c.name?.toLowerCase().includes(q) ||
+          c.currentMatch?.toLowerCase().includes(q) ||
+          c.category?.toLowerCase().includes(q)
       )
     }
     return list
-  }, [activeCategory, searchQuery, channels])
+  }, [activeCategory, searchQuery, channels, qualityFilter])
 
   const { visible, hasMore, sentinelRef } = usePagedList(filtered, containerRef)
   const animated = filtered.length <= 40
@@ -172,6 +190,31 @@ export default function Home() {
 
       <div className="px-4 md:px-6 pt-5 pb-3">
         <CategoryTabs />
+      </div>
+
+      {/* Quality filter strip */}
+      <div className="flex items-center gap-2 px-4 md:px-6 pb-3">
+        <span className="text-white/25 text-[11px] font-semibold uppercase tracking-widest flex-shrink-0">Quality</span>
+        <div className="flex gap-1.5">
+          {QUALITY_FILTERS.map(({ label, value }) => (
+            <button
+              key={label}
+              onClick={() => setQualityFilter(value)}
+              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
+                qualityFilter === value
+                  ? 'bg-brand-500 border-brand-500 text-black'
+                  : 'bg-white/[0.05] border-white/[0.08] text-white/40 hover:text-white hover:border-white/20'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {qualityFilter && (
+          <span className="ml-auto text-white/30 text-xs">
+            {filtered.length} channel{filtered.length !== 1 ? 's' : ''}
+          </span>
+        )}
       </div>
 
       {/* Favourites row — only on trending tab with no active search */}
