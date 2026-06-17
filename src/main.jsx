@@ -14,6 +14,7 @@ installGuard()
 //   __cf.down('msg')         → shut down with custom message
 //   __cf.up()                → restore site for everyone
 //   __cf.status()            → check current state
+//   __cf.refresh()           → force re-check Gist and update page state
 //   __cf.setToken('ghp_...')  → save your GitHub token (one time)
 import { siteControl } from './utils/site-status.js'
 window.__cf = siteControl

@@ -86,4 +86,8 @@ export const siteControl = {
     localStorage.setItem('cf_gh_token', token)
     console.log('%c✅ GitHub token saved.', 'color:#c8ff00;font-weight:700')
   },
+  async refresh() {
+    window.dispatchEvent(new Event('cf_maintenance_change'))
+    console.log('%c🔄 Refreshing maintenance state from Gist…', 'color:#60a5fa;font-size:13px')
+  },
 }
