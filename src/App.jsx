@@ -125,7 +125,7 @@ export default function App() {
 
       {/* ── Maintenance overlay ── */}
       <AnimatePresence>
-        {maintenance && (
+        {maintenance && localStorage.getItem('cf_dev') !== '1' && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
