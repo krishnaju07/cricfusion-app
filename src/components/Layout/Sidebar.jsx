@@ -171,7 +171,7 @@ export default function Sidebar({ currentChannelId }) {
   }, [grouped])
 
   useEffect(() => {
-    activeRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    activeRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
   }, [currentChannelId])
 
   const totalLive = channels.filter((c) => c.isLive).length
