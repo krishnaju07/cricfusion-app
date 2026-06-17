@@ -7,6 +7,7 @@ export default function ChannelCard({ channel, index = 0, animated = true }) {
   const navigate = useNavigate()
   const cardRef  = useRef(null)
   const [imgFailed, setImgFailed] = useState(false)
+  const thumbSrc = channel.thumbnail || channel.logoUrl || null
   const [hovered, setHovered]     = useState(false)
   const [tilt, setTilt]           = useState({ x: 0, y: 0 })
 
@@ -52,13 +53,13 @@ export default function ChannelCard({ channel, index = 0, animated = true }) {
       >
         {/* ── Thumbnail ── */}
         <div className="relative overflow-hidden aspect-video">
-          {imgFailed || !channel.thumbnail ? (
+          {imgFailed || !thumbSrc ? (
             <div className="w-full h-full bg-gradient-to-br from-[#1c1c1c] to-[#0a0a0a] flex items-center justify-center">
               <span className="text-white/15 font-black text-2xl tracking-tight">{channel.logo}</span>
             </div>
           ) : (
             <motion.img
-              src={channel.thumbnail}
+              src={thumbSrc}
               alt={channel.name}
               className="w-full h-full object-cover"
               loading="lazy"
