@@ -222,7 +222,7 @@ export const useStore = create((set, get) => ({
         }
       }
 
-      const allChannels = [...apiChannels, ...dynamicChannels, ...STATIC_CHANNELS, ...fifaChannels, ...fanCodeChannels, ...sonyLivChannels, ...tpApiChannels, ...m3uChannels, ...IPTV_SPORTS_CHANNELS, ...(FEATURES.IPTV_TAMIL ? IPTV_TAMIL_CHANNELS : [])]
+      const allChannels = [...apiChannels, ...dynamicChannels, ...fifaChannels, ...fanCodeChannels, ...sonyLivChannels, ...tpApiChannels, ...m3uChannels, ...STATIC_CHANNELS, ...IPTV_SPORTS_CHANNELS, ...(FEATURES.IPTV_TAMIL ? IPTV_TAMIL_CHANNELS : [])]
       const seen = new Set()
       const deduped = allChannels.filter((ch) => {
         if (seen.has(ch.key)) return false
