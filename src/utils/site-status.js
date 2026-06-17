@@ -12,7 +12,7 @@
 //      localStorage.setItem('cf_gh_token', 'ghp_YOUR_TOKEN_HERE')
 //      (Token needs only the "gist" scope)
 
-const GIST_ID   = 'REPLACE_WITH_YOUR_GIST_ID'   // ← paste your Gist ID here
+const GIST_ID   = '3925f7f5f1d01c9e30ca5b4b8f0819d8'
 const GIST_FILE = 'cricfusion-status.json'
 const RAW_URL   = `https://gist.githubusercontent.com/krishnaju07/${GIST_ID}/raw/${GIST_FILE}`
 const API_URL   = `https://api.github.com/gists/${GIST_ID}`
