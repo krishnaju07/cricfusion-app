@@ -265,7 +265,10 @@ export function mapFifaChannel(s) {
     score:        null,
     url:          s.url,
     mimeType:     s.mimeType || undefined,
+    reqHeaders:   s.reqHeaders || null,
     clearKey:     s.keyId ? { keyId: s.keyId, key: s.drmKey } : null,
+    clearKeys:    s.keys  ? Object.fromEntries(s.keys.map((k) => [k.keyId, k.drmKey]))
+                          : s.keyId ? { [s.keyId]: s.drmKey } : null,
     quality:      ['Auto', '1080p', '720p', '480p'],
   }
 }

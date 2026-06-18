@@ -41,8 +41,19 @@ const FOOTAPI_META = {
   trt1ios:         { logo: 'TRT',  language: 'Turkish' },
 }
 
-// Footapi IDs to skip — covered by the static list with better metadata
-const FOOTAPI_SKIP = new Set(['rte2'])
+// Footapi IDs to skip:
+// - 'rte2' covered by static fifa_rte_sport (better metadata)
+// - others covered by iptv-eldbert (priority 1)
+const FOOTAPI_SKIP = new Set([
+  'rte2',
+  'dsports',       // iptv: DSports
+  'cazetvprime',   // iptv: Cazé TV
+  'cazeios',       // iptv: Cazé TV (same content)
+  'telemundo',     // iptv: Telemundo USA
+  'canal5mx',      // iptv: Canal 5 MX
+  'foxusa',        // iptv: Fox Sports 1 USA
+  'foxavc',        // iptv: Fox Sports 1 USA (alt CDN, same content)
+])
 
 // Static channels not available from footapi
 const STATIC_STREAMS = [
@@ -72,30 +83,6 @@ const STATIC_STREAMS = [
     url: 'https://otte.live.fly.ww.aiv-cdn.net/lhr-nitro/live/clients/dash/enc/62qdkefv9f/out/v1/f7d5b356e048494a8325563e8916d50b/cenc.mpd',
     keyId:  'fd86dde0ae3e14ff51c8fc8f248a50db',
     drmKey: 'd106ae78b0893da2e4393ece99420baa',
-  },
-  {
-    id: 318,
-    key: 'fifa_fox_sports_1',
-    name: 'Fox Sports 1',
-    match: 'FIFA World Cup 2026 — Live',
-    logo: 'FOX',
-    language: 'English',
-    description: 'FIFA World Cup 2026 — Fox Sports 1',
-    url: 'https://otte.live.fly.ww.aiv-cdn.net/iad-nitro/live/dash/enc/ap5wz1ofsp/out/v1/7fa6feef143747beaa186ebb6dfb2532/cenc.mpd',
-    keyId:  'c620c93c60c04999eb9ddc28ecfb70a8',
-    drmKey: 'e76a709c251313190e76cb3c3d3a5824',
-  },
-  {
-    id: 316,
-    key: 'fifa_fussball_tv',
-    name: 'Fussball TV',
-    match: 'FIFA World Cup 2026 — Live',
-    logo: 'FBL',
-    language: 'German',
-    description: 'FIFA World Cup 2026 — Fussball TV',
-    url: 'https://svc45.main.sl.t-online.de/bpk-tv/KID01037_FUSSBALLTV1_hd/DASH/index.mpd',
-    keyId:  '1cb20afcd9d979c833cfd208c7d3eeb2',
-    drmKey: 'fef0c15b4a523370892edd5e4133c269',
   },
   {
     id: 325,
@@ -169,18 +156,6 @@ const STATIC_STREAMS = [
     url: 'https://a151aivottlinear-a.akamaihd.net/OTTB/sin-nitro/live/dash/enc/m7duvnk2bu/out/v1/d1ad69118b5647309b1eb7213affdb3d/cenc.mpd',
     keyId:  '4bbcff3289d457b4dd5dbdd21221de9a',
     drmKey: 'c4906b9a9f8dda3c0725bddb8c497733',
-  },
-  {
-    id: 305,
-    key: 'fifa_opening_tsn',
-    name: 'Telemundo',
-    match: 'FIFA World Cup 2026 — Live',
-    logo: 'TSN',
-    language: 'English',
-    description: 'FIFA World Cup 2026 — TSN',
-    url: 'https://live-oneapp-prd-news.akamaized.net/Content/CMAF_OL2-CTR-4s-v2/Live/channel(kvea)/master.mpd',
-    keyId:  'ce7ab3022e753307997f58afe001bac4',
-    drmKey: '72d631a66e635c60829a0fe7705516c1',
   },
   {
     id: 320,

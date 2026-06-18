@@ -71,6 +71,17 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
+  // ── iptv-eldbert FIFA/World Cup channels (always-fresh tokenized HLS) ────
+  if (url.pathname === '/cf-iptv') {
+    event.respondWith(
+      fetch('/api/cf-iptv', { cache: 'no-store', credentials: 'omit' })
+        .then((r) => r.text())
+        .then(makeResponse)
+        .catch(() => new Response('error', { status: 502 }))
+    )
+    return
+  }
+
   // ── Per-channel dynamic fetch ─────────────────────────────────────────────
   if (url.pathname === '/cf-dynamic') {
     const id = url.searchParams.get('id')

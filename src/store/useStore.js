@@ -15,6 +15,7 @@ const DYNAMIC_PROXY = '/cf-dynamic'   // SW → newwwwapiiiiii.vercel.app/main?i
 const FANCODE_PROXY = '/cf-fancode'   // SW → github drmlive/fancode-live-events
 const SONYLIV_PROXY = '/cf-sonyliv'   // SW → github drmlive/sliv-live-events
 const FIFA_PROXY    = '/cf-fifa'      // SW → /api/cf-fifa (server-side, Referer-locked)
+const IPTV_PROXY    = '/cf-iptv'      // SW → /api/cf-iptv (iptv-eldbert FIFA channels)
 
 // SW base64-encodes responses; decode back to JSON string.
 // Falls back to plain JSON when SW is active but an old SW version fell
@@ -132,11 +133,12 @@ export const useStore = create((set, get) => ({
 
     try {
       // Fire all APIs in parallel — SW proxies so real URLs stay hidden
-      const [batchResult, fanCodeResult, sonyLivResult, fifaResult, ...dynamicResults] = await Promise.allSettled([
+      const [batchResult, fanCodeResult, sonyLivResult, fifaResult, iptvResult, ...dynamicResults] = await Promise.allSettled([
         fetch(batchUrl).then((r) => r.text()),
         fetch(fanCodeUrl).then((r) => r.text()),
         fetch(sonyLivUrl).then((r) => r.text()),
-        fetch(fifaUrl).then((r) => r.text()),
+        fetch(FIFA_PROXY).then((r) => r.text()),
+        fetch(IPTV_PROXY).then((r) => r.text()),
         ...DYNAMIC_CHANNEL_IDS.map((id) => fetch(dynUrl(id)).then((r) => r.text())),
       ])
 
@@ -173,11 +175,18 @@ export const useStore = create((set, get) => ({
           .map((m, i) => mapSonyLivChannel(m, 300 + i + 1))
       }
 
-      // ── FIFA 2026 streams (server-side, Referer-locked) ───────────────
+      // ── FIFA 2026 streams (footapi, server-side Referer-locked) ──────────
       let fifaChannels = []
       if (fifaResult.status === 'fulfilled') {
         const json = decode(fifaResult.value, swActive)
         fifaChannels = (Array.isArray(json) ? json : []).map(mapFifaChannel)
+      }
+
+      // ── iptv-eldbert FIFA/World Cup channels (always-fresh HLS) ──────────
+      if (iptvResult.status === 'fulfilled') {
+        const json = decode(iptvResult.value, swActive)
+        const iptvChannels = (Array.isArray(json) ? json : []).map(mapFifaChannel)
+        fifaChannels = [...fifaChannels, ...iptvChannels]
       }
 
       // ── Per-channel dynamic channels ───────────────────────────────────
