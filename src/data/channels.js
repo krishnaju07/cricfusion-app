@@ -32,22 +32,22 @@ const CHANNEL_META = {
     thumbnail: T('1595435741984-3a9a5f5ebe68'),    // cricket crowd
   },
   s1: {
-    name: 'Sony LIV Sports 1', logo: 'SL1', category: 'multi',
+    name: 'Sony LIV Sports 1', logo: 'SL1', category: 'cricket',
     language: 'English', badge: 'HD', viewers: '1.6M',
     thumbnail: T('1574629810360-7efbbe195018'),    // football
   },
   s2: {
-    name: 'Sony LIV Sports 2', logo: 'SL2', category: 'multi',
+    name: 'Sony LIV Sports 2', logo: 'SL2', category: 'cricket',
     language: 'English', badge: 'HD', viewers: '980K',
     thumbnail: T('1461896836934-ffe607ba8211'),    // sports stadium
   },
   s3: {
-    name: 'Sony LIV Sports 3', logo: 'SL3', category: 'multi',
+    name: 'Sony LIV Sports 3', logo: 'SL3', category: 'cricket',
     language: 'English', badge: 'HD', viewers: '750K',
     thumbnail: T('1546519638405-a9f1e9a4f7c5'),    // basketball arena
   },
   s5: {
-    name: 'Sony LIV Sports 5', logo: 'SL5', category: 'multi',
+    name: 'Sony LIV Sports 5', logo: 'SL5', category: 'cricket',
     language: 'English', badge: 'HD', viewers: '620K',
     thumbnail: T('1568605117036-5fe5e7bab0b7'),    // running track
   },
@@ -335,7 +335,7 @@ export const STATIC_CHANNELS = [
     id: 118,
     key: 'prime',
     name: 'Prime video 1080p50',
-    category: 'multi',
+    category: 'cricket',
     currentMatch: 'Prime video 1080p50 — Live',
     thumbnail: T('1540747913346-19212a4b423f'),
     logo: 'PRIME',
