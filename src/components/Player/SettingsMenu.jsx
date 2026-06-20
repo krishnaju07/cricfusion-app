@@ -41,7 +41,7 @@ export default function SettingsMenu({
   pipEnabled, pip, onPIP,
   objectFit, onFitChange,
   airPlayAvailable, onAirPlay,
-  castAvailable, casting, onCast,
+  castAvailable, casting, castPhase, devicesPresent, onCast,
   onClose,
 }) {
   const [page, setPage] = useState(null) // null = home
@@ -192,7 +192,8 @@ export default function SettingsMenu({
             )}
             {castAvailable && (
               <OptionRow
-                label="Cast to TV"
+                label={casting ? 'Stop casting' : castPhase === 'connecting' ? 'Connecting…' : 'Cast to TV'}
+                hint={!casting && castPhase !== 'connecting' && !devicesPresent ? 'No TV found' : undefined}
                 icon={() => <CastIcon size={14} />}
                 active={casting}
                 onClick={() => { onCast(); back() }}
@@ -213,8 +214,9 @@ export default function SettingsMenu({
         initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
         transition={{ type: 'spring', stiffness: 380, damping: 36 }}
         onClick={(e) => e.stopPropagation()}
+        data-no-gesture
         className="sm:hidden absolute bottom-0 left-0 right-0 z-50 glass-dark rounded-t-2xl shadow-2xl flex flex-col overflow-hidden"
-        style={{ maxHeight: '70%' }}
+        style={{ maxHeight: '85%' }}
       >
         <div className="relative flex items-center justify-between px-4 pt-3 pb-2 flex-shrink-0 border-b border-white/[0.07]">
           <div className="absolute left-1/2 -translate-x-1/2 top-2 w-8 h-1 bg-white/20 rounded-full" />
@@ -223,7 +225,7 @@ export default function SettingsMenu({
             <X size={14} className="text-white/60" />
           </button>
         </div>
-        <div className="overflow-y-auto flex-1">{inner}</div>
+        <div className="overflow-y-auto overscroll-contain flex-1" style={{ touchAction: 'pan-y' }}>{inner}</div>
       </motion.div>
 
       {/* Desktop: dropdown */}
@@ -233,6 +235,7 @@ export default function SettingsMenu({
         exit={{ opacity: 0, scale: 0.92, y: 8 }}
         transition={{ duration: 0.14 }}
         onClick={(e) => e.stopPropagation()}
+        data-no-gesture
         className="hidden sm:block absolute bottom-20 right-4 glass-dark rounded-xl shadow-2xl z-50 w-52 overflow-hidden"
         style={{ maxHeight: 'calc(100% - 120px)' }}
       >
@@ -257,7 +260,7 @@ function SubPage({ title, onBack, children }) {
   )
 }
 
-function OptionRow({ label, icon: Icon, badge, active, onClick }) {
+function OptionRow({ label, icon: Icon, badge, hint, active, onClick }) {
   return (
     <button
       onClick={onClick}
@@ -268,6 +271,7 @@ function OptionRow({ label, icon: Icon, badge, active, onClick }) {
         <span className={`text-sm truncate ${active ? 'text-white font-medium' : 'text-white/90'}`}>{label}</span>
         {badge && <span className="text-[9px] bg-brand-500/25 text-brand-300 px-1 py-0.5 rounded font-bold flex-shrink-0">{badge}</span>}
       </div>
+      {hint && <span className="text-white/35 text-xs flex-shrink-0">{hint}</span>}
       {active && <Check size={14} className="text-brand-400 flex-shrink-0" />}
     </button>
   )

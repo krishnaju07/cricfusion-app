@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
 import Hls from 'hls.js'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Lock, LockOpen, Sun, Volume2 as VolumeSwipeIcon, Wifi } from 'lucide-react'
+import { Lock, LockOpen, Sun, Volume2 as VolumeSwipeIcon, Wifi, WifiOff } from 'lucide-react'
 import PlayerControls from './PlayerControls'
 import SettingsMenu from './SettingsMenu'
 import SeekIndicator from './SeekIndicator'
@@ -110,6 +110,9 @@ export default function VideoPlayer({ channel }) {
   const [streamTracks, setStreamTracks] = useState([])   // detected text tracks from stream
   const [castAvailable, setCastAvailable]   = useState(false)
   const [casting, setCasting]               = useState(false)
+  const [castPhase, setCastPhase]           = useState('idle')   // idle | connecting | connected
+  const [devicesPresent, setDevicesPresent] = useState(false)    // any Cast receiver visible on the network
+  const [castHint, setCastHint]             = useState(false)    // show "VPN blocking TV" guide
   const [airPlayAvailable, setAirPlayAvailable] = useState(false)
 
   const [state, setState] = useState({
@@ -160,13 +163,34 @@ export default function VideoPlayer({ channel }) {
           receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
           autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
         })
-        cast.framework.CastContext.getInstance().addEventListener(
+        const ctx = cast.framework.CastContext.getInstance()
+
+        // Track whether any receiver is reachable. With a VPN on, local mDNS
+        // discovery is tunneled away and this stays NO_DEVICES_AVAILABLE.
+        const syncCastState = () => {
+          const s = ctx.getCastState()
+          setDevicesPresent(s !== cast.framework.CastState.NO_DEVICES_AVAILABLE)
+        }
+        ctx.addEventListener(
+          cast.framework.CastContextEventType.CAST_STATE_CHANGED,
+          syncCastState
+        )
+        syncCastState()
+
+        ctx.addEventListener(
           cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
           (e) => {
             const active =
               e.sessionState === cast.framework.SessionState.SESSION_STARTED ||
               e.sessionState === cast.framework.SessionState.SESSION_RESUMED
             setCasting(active)
+            setCastPhase(active ? 'connected' : 'idle')
+            if (active) setCastHint(false)
+            // Re-attach our media after a dropped/resumed session so the TV
+            // keeps showing the right channel instead of a stale receiver app.
+            if (e.sessionState === cast.framework.SessionState.SESSION_RESUMED) {
+              loadCastMediaRef.current?.(ctx.getCurrentSession())
+            }
           }
         )
         setCastAvailable(true)
@@ -186,33 +210,52 @@ export default function VideoPlayer({ channel }) {
     return () => v.removeEventListener('webkitplaybacktargetavailabilitychanged', handler)
   }, [])
 
+  // Builds the LoadRequest for the current channel and pushes it to a session.
+  const loadCastMedia = useCallback(async (session) => {
+    if (!session || !channel?.url) return
+    const { chrome } = window
+    const url = channel.url.startsWith('/')
+      ? `${window.location.origin}${channel.url}`
+      : channel.url
+    const mimeType = (url.includes('.mpd') || url.includes('/api/cf-m6')) ? 'application/dash+xml' : 'application/x-mpegURL'
+
+    const mediaInfo = new chrome.cast.media.MediaInfo(url, mimeType)
+    mediaInfo.metadata = new chrome.cast.media.GenericMediaMetadata()
+    mediaInfo.metadata.title = channel.name || 'CricFusion'
+    mediaInfo.metadata.subtitle = channel.currentMatch || ''
+    if (channel.thumbnail) mediaInfo.metadata.images = [new chrome.cast.Image(channel.thumbnail)]
+
+    await session.loadMedia(new chrome.cast.media.LoadRequest(mediaInfo))
+  }, [channel])
+
+  // Keep a stable ref so the once-mounted Cast listeners always reload the
+  // latest channel after a session resume.
+  const loadCastMediaRef = useRef(loadCastMedia)
+  useEffect(() => { loadCastMediaRef.current = loadCastMedia }, [loadCastMedia])
+
   const startCast = useCallback(async () => {
     if (!channel?.url) return
+    setCastHint(false)
     try {
-      const { cast, chrome } = window
+      const { cast } = window
       const ctx = cast.framework.CastContext.getInstance()
       if (ctx.getSessionState() === cast.framework.SessionState.NO_SESSION) {
+        setCastPhase('connecting')
         await ctx.requestSession()
       }
       const session = ctx.getCurrentSession()
-      if (!session) return
+      if (!session) { setCastPhase('idle'); return }
 
-      const url = channel.url.startsWith('/')
-        ? `${window.location.origin}${channel.url}`
-        : channel.url
-      const mimeType = (url.includes('.mpd') || url.includes('/api/cf-m6')) ? 'application/dash+xml' : 'application/x-mpegURL'
-
-      const mediaInfo = new chrome.cast.media.MediaInfo(url, mimeType)
-      mediaInfo.metadata = new chrome.cast.media.GenericMediaMetadata()
-      mediaInfo.metadata.title = channel.name || 'CricFusion'
-      mediaInfo.metadata.subtitle = channel.currentMatch || ''
-      if (channel.thumbnail) mediaInfo.metadata.images = [new chrome.cast.Image(channel.thumbnail)]
-
-      await session.loadMedia(new chrome.cast.media.LoadRequest(mediaInfo))
+      await loadCastMedia(session)
+      setCastPhase('connected')
     } catch (err) {
+      setCastPhase('idle')
+      // 'cancel' = user closed the picker; anything else (esp. no receiver
+      // found) likely means a VPN is tunneling local discovery away.
+      if (err !== 'cancel' && err?.code !== 'cancel') setCastHint(true)
       console.warn('[cast]', err)
     }
-  }, [channel])
+  }, [channel, loadCastMedia])
 
   const stopCast = useCallback(async () => {
     try {
@@ -1033,6 +1076,8 @@ export default function VideoPlayer({ channel }) {
       return
     }
     if (e.touches.length === 1) {
+      // Don't hijack swipes that belong to a scrollable overlay (settings sheet, hints)
+      if (e.target?.closest?.('[data-no-gesture]')) return
       if (!liveRef.current.fullscreen) return  // brightness/volume swipe only in fullscreen
       const t = e.touches[0]
       const rect = containerRef.current?.getBoundingClientRect()
@@ -1240,17 +1285,51 @@ export default function VideoPlayer({ channel }) {
 
       {/* Casting overlay */}
       <AnimatePresence>
-        {casting && (
+        {(casting || castPhase === 'connecting') && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="absolute inset-0 flex flex-col items-center justify-center bg-black/75 pointer-events-none z-10"
           >
-            <svg className="w-16 h-16 text-brand-500 mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg className={`w-16 h-16 text-brand-500 mb-4 ${castPhase === 'connecting' ? 'animate-pulse' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/>
               <line x1="2" y1="20" x2="2.01" y2="20"/>
             </svg>
-            <p className="text-white font-semibold text-sm">Casting to TV</p>
+            <p className="text-white font-semibold text-sm">
+              {castPhase === 'connecting' ? 'Connecting to TV…' : 'Casting to TV'}
+            </p>
             <p className="text-white/50 text-xs mt-1">{channel?.name}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* No-device / VPN hint */}
+      <AnimatePresence>
+        {castHint && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="absolute inset-0 z-20 flex items-center justify-center bg-black/80 px-6"
+            onClick={() => setCastHint(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.92, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.92, y: 10 }}
+              onClick={(e) => e.stopPropagation()}
+              className="max-w-xs w-full bg-dark-800 border border-white/10 rounded-2xl p-5 text-center"
+            >
+              <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center">
+                <WifiOff size={22} className="text-yellow-400" />
+              </div>
+              <h3 className="text-white font-bold text-base mb-2">No TV found</h3>
+              <p className="text-white/55 text-sm leading-relaxed mb-4">
+                If your <span className="text-white/80 font-semibold">VPN is on</span>, it's blocking your phone from seeing the TV. Open your VPN app and enable
+                {' '}<span className="text-white/80 font-semibold">“Allow local network / LAN”</span>, then tap Cast again.
+              </p>
+              <button
+                onClick={() => setCastHint(false)}
+                className="w-full py-2.5 rounded-xl bg-brand-500 text-black font-bold text-sm active:scale-95 transition-transform"
+              >
+                Got it
+              </button>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1426,6 +1505,8 @@ export default function VideoPlayer({ channel }) {
             onAirPlay={toggleAirPlay}
             castAvailable={castAvailable}
             casting={casting}
+            castPhase={castPhase}
+            devicesPresent={devicesPresent}
             onCast={toggleCast}
             onClose={() => update({ showQualityMenu: false })}
           />
