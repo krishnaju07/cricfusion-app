@@ -311,6 +311,23 @@ export const useStore = create((set, get) => ({
     get().loadChannels()
   },
 
+  // Hard refresh: force the service worker to update and reload the page so a
+  // brand-new SW re-fetches fresh tokenized stream data (fixes stale "Token
+  // expired" URLs cached at the SW / upstream edge). Heavier than refreshChannels.
+  hardRefresh: async () => {
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations()
+        await Promise.all(regs.map((r) => r.update().catch(() => {})))
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys()
+        await Promise.all(keys.map((k) => caches.delete(k)))
+      }
+    } catch {}
+    window.location.reload()
+  },
+
   // ── Navigation state ───────────────────────────────────────────────────
   currentChannel: null,
   setCurrentChannel: (ch) => set({ currentChannel: ch }),

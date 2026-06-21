@@ -1,17 +1,44 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, X, Tv2, RefreshCw } from 'lucide-react'
 import { useStore } from '../../store/useStore'
 import { Link, useNavigate } from 'react-router-dom'
 
 export default function Header() {
-  const { searchQuery, setSearchQuery, refreshChannels, channelsLoading } = useStore()
+  const { searchQuery, setSearchQuery, refreshChannels, hardRefresh, channelsLoading } = useStore()
   const [searchOpen, setSearchOpen] = useState(false)
   const navigate = useNavigate()
 
   const handleSearch = (e) => {
     e.preventDefault()
     navigate('/')
+  }
+
+  // Tap = soft refresh, long-press (≥600ms) = hard refresh (clear cache + reload).
+  const longPressRef = useRef(false)
+  const timerRef = useRef(null)
+  const [holding, setHolding] = useState(false)
+
+  const startPress = () => {
+    longPressRef.current = false
+    setHolding(true)
+    timerRef.current = setTimeout(() => {
+      longPressRef.current = true
+      setHolding(false)
+      navigator.vibrate?.(20)
+      hardRefresh()
+    }, 600)
+  }
+
+  const endPress = () => {
+    clearTimeout(timerRef.current)
+    setHolding(false)
+    if (!longPressRef.current) refreshChannels()
+  }
+
+  const cancelPress = () => {
+    clearTimeout(timerRef.current)
+    setHolding(false)
   }
 
   return (
@@ -58,8 +85,14 @@ export default function Header() {
 
         <div className="flex-1" />
 
-        {/* Refresh */}
-        <motion.button whileTap={{ scale: 0.9 }} onClick={refreshChannels}
+        {/* Refresh — tap = soft re-pull, long-press = hard refresh (clear cache + reload) */}
+        <motion.button title="Tap to refresh · hold to hard refresh"
+          animate={{ scale: holding ? 0.82 : 1 }}
+          transition={{ type: 'tween', duration: holding ? 0.6 : 0.15, ease: 'easeOut' }}
+          onPointerDown={startPress} onPointerUp={endPress}
+          onPointerLeave={cancelPress} onPointerCancel={cancelPress}
+          onContextMenu={(e) => e.preventDefault()}
+          style={{ touchAction: 'none', WebkitTapHighlightColor: 'transparent', WebkitTouchCallout: 'none', userSelect: 'none' }}
           className="w-9 h-9 flex items-center justify-center rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors">
           <RefreshCw size={16} className={channelsLoading ? 'animate-spin text-brand-500' : ''} />
         </motion.button>
