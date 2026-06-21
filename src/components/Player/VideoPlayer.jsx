@@ -104,8 +104,12 @@ export default function VideoPlayer({ channel }) {
   const subClearTimer      = useRef(null)   // clears subtitle text after silence gap
   const fallbackTriedRef   = useRef(false)  // true once fallbackUrl has been attempted
   const preferredQualityApplied = useRef(false)
+  const recoverAttempts    = useRef(0)      // token-expiry auto-refetch attempts (reset on channel switch / successful play)
 
-  const { preferredQuality } = useStore()
+  const { preferredQuality, refreshChannels } = useStore()
+
+  // Reset recovery budget when switching to a different channel (not on token reloads).
+  useEffect(() => { recoverAttempts.current = 0 }, [channel?.id])
 
   const [streamTracks, setStreamTracks] = useState([])   // detected text tracks from stream
   const [castAvailable, setCastAvailable]   = useState(false)
@@ -307,6 +311,21 @@ export default function VideoPlayer({ channel }) {
     video.removeAttribute('src')
     video.load()
 
+    // Token-expiry auto-recovery: the Star/Sony & Sony LIV streams embed a
+    // short-lived Akamai hdnea token in the URL. When it expires the CDN returns
+    // 401/403 and playback dies with "token expired". Re-fetching the channel
+    // JSON mints a fresh token; the updated channel.url flows back via props and
+    // re-runs this effect. Guarded so a genuinely-dead stream can't loop forever.
+    const MAX_RECOVERIES = 2
+    const tryTokenRecovery = (label) => {
+      if (recoverAttempts.current >= MAX_RECOVERIES) return false
+      recoverAttempts.current += 1
+      console.warn(`[player] ${label} — refetching channel data for fresh token (attempt ${recoverAttempts.current}/${MAX_RECOVERIES})`)
+      update({ error: null, loading: true })
+      refreshChannels()
+      return true
+    }
+
     const isMPD = channel.url.includes('.mpd') || channel.url.includes('/api/tp-mpd') || channel.url.includes('/api/cf-m6')
     const isHLS = channel.url.includes('.m3u8')
 
@@ -457,6 +476,9 @@ export default function VideoPlayer({ channel }) {
         console.warn('Shaka error (severity', err?.severity, 'code', err?.code, ')', err)
         const isCritical = err?.severity === 2
         if (!isCritical) return
+        // Network-category errors (1xxx) on a live stream usually mean the
+        // embedded CDN token expired — refetch fresh channel data and retry.
+        if (err?.category === 1 && tryTokenRecovery(`Shaka network error ${err.code}`)) return
         if (channel.fallbackUrl && !fallbackTriedRef.current) {
           fallbackTriedRef.current = true
           update({ error: null, loading: true })
@@ -557,6 +579,7 @@ export default function VideoPlayer({ channel }) {
           if (isCancelled) return
           console.error('Shaka load failed', err)
           if (liveRef.current.playing || (liveRef.current.currentTime ?? 0) > 0) return
+          if (err?.category === 1 && tryTokenRecovery(`Shaka load network error ${err.code}`)) return
           if (channel.fallbackUrl && !fallbackTriedRef.current) {
             fallbackTriedRef.current = true
             try { await player.load(channel.fallbackUrl, null, channel.mimeType || undefined); return } catch {}
@@ -704,6 +727,8 @@ export default function VideoPlayer({ channel }) {
             hls.startLoad()
           } else if (channel.sonyLivUrl) {
             update({ error: 'Stream unavailable via proxy.', loading: false })
+          } else if (d.type === Hls.ErrorTypes.NETWORK_ERROR && tryTokenRecovery(`HLS fatal ${d.details}`)) {
+            // Expired CDN token (403/401 on manifest or segments) — refetch fresh channel data.
           } else {
             update({ error: 'Stream error. Retrying…', loading: false })
             hlsRetryTimer = setTimeout(() => {
@@ -767,7 +792,7 @@ export default function VideoPlayer({ channel }) {
       waitingTimer.current = setTimeout(() => update({ loading: true }), 700)
     }
     const clearWaiting = () => { clearTimeout(waitingTimer.current); waitingTimer.current = null }
-    const onPlaying  = () => { clearWaiting(); update({ loading: false, playing: true, error: null }) }
+    const onPlaying  = () => { clearWaiting(); recoverAttempts.current = 0; update({ loading: false, playing: true, error: null }) }
     const onPause    = () => update({ playing: false })
     const onVolume   = () => update({ volume: v.volume, muted: v.muted })
     const onEnded    = () => update({ playing: false })
