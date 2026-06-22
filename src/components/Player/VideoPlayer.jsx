@@ -76,6 +76,8 @@ function deriveSafariHlsUrl(mpd) {
   // Generic CMAF: master.mpd → master.m3u8, index.mpd → index.m3u8
   if (mpd.endsWith('master.mpd')) return mpd.replace('master.mpd', 'master.m3u8')
   if (mpd.endsWith('index.mpd'))  return mpd.replace('index.mpd',  'index.m3u8')
+  // Last-resort: many CDNs (bitgravity, Sun Direct, etc.) serve parallel HLS at .m3u8
+  if (mpd.endsWith('.mpd')) return mpd.replace(/\.mpd$/, '.m3u8')
   return null
 }
 
@@ -374,6 +376,8 @@ export default function VideoPlayer({ channel }) {
       const dashMaxHeight = is4K ? Infinity : (dashDownlink >= 8 ? 1080 : dashDownlink >= 3 ? 720 : 480)
 
       // DRM: ClearKey (inline keys or license server)
+      const isAndroid = /android/i.test(navigator.userAgent)
+
       const cfg = {
         streaming: {
           lowLatencyMode:  false,
@@ -392,6 +396,9 @@ export default function VideoPlayer({ channel }) {
           bandwidthUpgradeTarget:   0.7,         // upgrade cautiously to avoid stall-inducing overshoot
         },
         restrictions: { maxHeight: dashMaxHeight },  // cap to a sustainable resolution
+        // Android Chrome has inconsistent HEVC/H.265 hardware decode support —
+        // prefer H.264 so Shaka doesn't pick an HEVC track that stalls silently.
+        ...(isAndroid && { preferredVideoCodecs: ['avc1'] }),
       }
       if (channel.clearKey) {
         cfg.drm = {
