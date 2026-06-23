@@ -362,12 +362,12 @@ export const STATIC_CHANNELS = [
     },
     quality: ['Auto', '1080p', '720p', '480p'],
   },
-  {
+{
     id: 143,
     key: 'zee5cricket',
     name: 'Zee5 Cricket Live',
     category: 'zee5',
-    currentMatch: 'CZE vs RSA — Live on Zee5',
+    currentMatch: 'POR vs UZB — Live on Zee5',
     thumbnail: T('1546519638405-a9f1e9a4f7c5'),
     logo: 'ZEE',
     isLive: true,
@@ -376,7 +376,7 @@ export const STATIC_CHANNELS = [
     language: 'English',
     description: 'Zee5 Cricket — Live',
     score: null,
-    url: 'https://falcon-en-conn.zee5.com/hls/live/2125511/CZE-vs-RSA-18-con_ENG/index-connected.m3u8?hdnts=st=1781795943~exp=1781810343~acl=/hls/live/2125511/CZE-vs-RSA-18-con_ENG/index-connected.m3u8*~id=0-1-6z5974812_B3A3B898-6E6D-4398-B06D-57183B24F343~hmac=fab9068062c54bc7dda71964f15e2ab611f3df6e31aecf9d66a4fe005fe489a9&req_id=2a971972-1824-49dc-bc5b-d9ef8fc4f0e9',
+    url: 'https://falcon-en-conn.zee5.com/hls/live/2125523/POR-vs-UZB-23-con_ENG/index-connected.m3u8?hdnts=st=1782234924~exp=1782249324~acl=/hls/live/2125523/POR-vs-UZB-23-con_ENG/index-connected.m3u8*~id=0-1-6z5974844_B3A3B898-6E6D-4398-B06D-57183B24F343~hmac=f5cd539141708babf790a80bf02d409f082e8a44164c041b36b257c223777792&req_id=cf2f832b-bd46-46dc-b208-1c1da2f4e621',
     clearKey: null,
     quality: ['Auto', '1080p', '720p', '480p'],
   },
