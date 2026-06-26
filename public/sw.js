@@ -2,11 +2,6 @@
 // Requests made FROM this SW are NOT visible in the browser's Network tab.
 // Page sees /cf-data or /cf-dynamic?id=...; real upstream URLs stay hidden.
 
-const BATCH_URL    = 'https://jtvv.pages.dev/channels.json'
-const DYNAMIC_URL  = '/api/cf-dynamic'
-const FANCODE_URL  = 'https://raw.githubusercontent.com/drmlive/fancode-live-events/main/fancode.json'
-const SONYLIV_URL  = 'https://raw.githubusercontent.com/drmlive/sliv-live-events/main/sonyliv.json'
-
 function b64(text) {
   return btoa(unescape(encodeURIComponent(text)))
 }
@@ -27,10 +22,10 @@ self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()))
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url)
 
-  // ── Batch channel list (jtvv) ─────────────────────────────────────────────
+  // ── Batch channel list ────────────────────────────────────────────────────
   if (url.pathname === '/cf-data') {
     event.respondWith(
-      fetch(BATCH_URL, { cache: 'no-store', credentials: 'omit' })
+      fetch('/api/cf-data', { cache: 'no-store', credentials: 'same-origin' })
         .then((r) => r.text())
         .then(makeResponse)
         .catch(() => new Response('error', { status: 502 }))
@@ -41,7 +36,7 @@ self.addEventListener('fetch', (event) => {
   // ── FanCode live events ───────────────────────────────────────────────────
   if (url.pathname === '/cf-fancode') {
     event.respondWith(
-      fetch(FANCODE_URL, { cache: 'no-store', credentials: 'omit' })
+      fetch('/api/cf-fancode', { cache: 'no-store', credentials: 'same-origin' })
         .then((r) => r.text())
         .then(makeResponse)
         .catch(() => new Response('error', { status: 502 }))
@@ -52,7 +47,7 @@ self.addEventListener('fetch', (event) => {
   // ── Sony LIV live events ──────────────────────────────────────────────────
   if (url.pathname === '/cf-sonyliv') {
     event.respondWith(
-      fetch(SONYLIV_URL, { cache: 'no-store', credentials: 'omit' })
+      fetch('/api/cf-sonyliv', { cache: 'no-store', credentials: 'same-origin' })
         .then((r) => r.text())
         .then(makeResponse)
         .catch(() => new Response('error', { status: 502 }))
@@ -87,7 +82,7 @@ self.addEventListener('fetch', (event) => {
     const id = url.searchParams.get('id')
     if (!id) return
     event.respondWith(
-      fetch(`${DYNAMIC_URL}?id=${encodeURIComponent(id)}`, {
+      fetch(`/api/cf-dynamic?id=${encodeURIComponent(id)}`, {
         cache: 'no-store', credentials: 'omit',
       })
         .then((r) => r.text())

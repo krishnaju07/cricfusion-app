@@ -447,6 +447,21 @@ export default defineConfig({
   plugins: [react(), sonyLivDevProxy(), m3uDevProxy(), tpLicenseDevProxy(), tpWvLicenseDevProxy(), tpMpdProxyDev(), tpApiDevProxy(), fifaDevProxy(), m6DevProxy(), iptvDevProxy()],
   server: {
     proxy: {
+      '/api/cf-data': {
+        target: 'https://jtvv.pages.dev',
+        changeOrigin: true,
+        rewrite: () => '/channels.json',
+      },
+      '/api/cf-fancode': {
+        target: 'https://raw.githubusercontent.com',
+        changeOrigin: true,
+        rewrite: () => '/drmlive/fancode-live-events/main/fancode.json',
+      },
+      '/api/cf-sonyliv': {
+        target: 'https://raw.githubusercontent.com',
+        changeOrigin: true,
+        rewrite: () => '/drmlive/sliv-live-events/main/sonyliv.json',
+      },
       '/cf-sonyliv': {
         target: 'https://raw.githubusercontent.com',
         changeOrigin: true,
