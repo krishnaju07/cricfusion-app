@@ -381,10 +381,10 @@ export default function VideoPlayer({ channel }) {
       const cfg = {
         streaming: {
           lowLatencyMode:  false,
-          // Bigger buffer so playback rides out network dips instead of stalling repeatedly.
-          bufferingGoal:   is4K ? 60 : 45,  // seconds to fill ahead
-          rebufferingGoal: is4K ? 6  : 4,   // require a real cushion before resuming after a stall
-          bufferBehind:    60,
+          // Mobile gets smaller buffers to avoid MediaSource QUOTA_EXCEEDED on low-RAM devices.
+          bufferingGoal:   is4K ? 60 : (isAndroid ? 20 : 45),
+          rebufferingGoal: is4K ? 6  : (isAndroid ? 3  : 4),
+          bufferBehind:    isAndroid ? 30 : 60,
           stallEnabled:    true,
           stallThreshold:  1,
           stallSkip:       0.1,
@@ -395,10 +395,16 @@ export default function VideoPlayer({ channel }) {
           bandwidthDowngradeTarget: 0.9,         // drop quality early when bandwidth tightens
           bandwidthUpgradeTarget:   0.7,         // upgrade cautiously to avoid stall-inducing overshoot
         },
-        restrictions: { maxHeight: dashMaxHeight },  // cap to a sustainable resolution
+        // NOTE: do NOT set restrictions here — Shaka checks them against available tracks
+        // during player.load() and throws RESTRICTIONS_CANNOT_BE_SATISFIED (error 3032)
+        // if the stream's minimum quality exceeds dashMaxHeight (happens on mobile when
+        // navigator.connection.downlink reports a low value). Apply after streaming starts.
         // Android Chrome has inconsistent HEVC/H.265 hardware decode support —
-        // prefer H.264 so Shaka doesn't pick an HEVC track that stalls silently.
-        ...(isAndroid && { preferredVideoCodecs: ['avc1'] }),
+        // prefer H.264 and AAC so Shaka doesn't pick codec combos that stall silently.
+        ...(isAndroid && {
+          preferredVideoCodecs: ['avc1'],
+          preferredAudioCodecs: ['mp4a.40.2', 'mp4a.40.5'],
+        }),
       }
       if (channel.clearKey) {
         cfg.drm = {
@@ -500,6 +506,7 @@ export default function VideoPlayer({ channel }) {
           err.code === 1001  ? 'Network error — CDN unreachable.' :
           err.code === 1002  ? 'Network timeout — check your connection.' :
           err.code === 3016  ? 'Stream expired — update the token in channels.js.' :
+          err.code === 3032  ? 'Stream quality restricted — try refreshing.' :
                                `Stream error (${err.code}).`
         update({ error: msg, loading: false })
       })
@@ -543,8 +550,12 @@ export default function VideoPlayer({ channel }) {
             update({ actualHeight: starter.height ?? 0 })
             setTimeout(() => {
               if (!shakaRef.current) return
-              // Re-enable ABR but keep the resolution cap so it can't overshoot the connection.
-              shakaRef.current.configure({ abr: { enabled: true }, restrictions: { maxHeight: dashMaxHeight } })
+              // Re-enable ABR with a resolution cap, but only if the cap doesn't eliminate
+              // ALL available tracks (that would throw RESTRICTIONS_CANNOT_BE_SATISFIED).
+              const liveTracks = shakaRef.current.getVariantTracks()
+              const minH = liveTracks.filter(t => t.height).reduce((m, t) => Math.min(m, t.height), Infinity)
+              const safeMax = isFinite(minH) ? Math.max(dashMaxHeight, minH) : dashMaxHeight
+              shakaRef.current.configure({ abr: { enabled: true }, restrictions: { maxHeight: safeMax } })
             }, 5000)
           }
         }
@@ -600,6 +611,7 @@ export default function VideoPlayer({ channel }) {
             err.code === 4001  ? 'Stream failed — invalid manifest format.' :
             err.code === 1001  ? 'Network error — CDN unreachable.' :
             err.code === 3016  ? 'Segment fetch failed — token may be expired.' :
+            err.code === 3032  ? 'Stream quality restricted — try refreshing.' :
                                  `Stream failed (${err.code ?? err.message}).`
           update({ error: msg, loading: false })
         }
