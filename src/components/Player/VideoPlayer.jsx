@@ -1247,15 +1247,25 @@ export default function VideoPlayer({ channel }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [togglePlay, seek, changeVolume, toggleMute, toggleFullscreen, togglePIP, goLive, showControlsTemporarily])
 
-  // ── Single vs double click disambiguation ─────────────────────────────
+  // ── Single vs double tap/click disambiguation ─────────────────────────
+  const lastTapX = useRef(null)
   const handleCenterClick = useCallback((e) => {
     e.stopPropagation()
+    const clientX = e.clientX ?? e.touches?.[0]?.clientX
     if (clickTimer.current) {
       clearTimeout(clickTimer.current); clickTimer.current = null
-      toggleFullscreen()
+      // Double tap: seek based on which half was tapped
+      const rect = containerRef.current?.getBoundingClientRect()
+      const x = lastTapX.current ?? clientX
+      if (rect && x !== undefined) {
+        const isRight = (x - rect.left) >= rect.width / 2
+        seek(isRight ? 10 : -10)
+      }
     } else {
+      lastTapX.current = clientX
       clickTimer.current = setTimeout(() => {
         clickTimer.current = null
+        // Single tap: toggle controls visibility
         if (liveRef.current.showControls) {
           clearTimeout(hideTimer.current)
           update({ showControls: false })
@@ -1264,7 +1274,7 @@ export default function VideoPlayer({ channel }) {
         }
       }, 220)
     }
-  }, [toggleFullscreen, showControlsTemporarily, update])
+  }, [seek, showControlsTemporarily, update])
 
   const qualityLevels = state.qualityLevels.length
     ? state.qualityLevels
