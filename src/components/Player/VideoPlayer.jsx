@@ -1256,10 +1256,15 @@ export default function VideoPlayer({ channel }) {
     } else {
       clickTimer.current = setTimeout(() => {
         clickTimer.current = null
-        togglePlay(); showControlsTemporarily()
+        if (liveRef.current.showControls) {
+          clearTimeout(hideTimer.current)
+          update({ showControls: false })
+        } else {
+          showControlsTemporarily()
+        }
       }, 220)
     }
-  }, [togglePlay, toggleFullscreen, showControlsTemporarily])
+  }, [toggleFullscreen, showControlsTemporarily, update])
 
   const qualityLevels = state.qualityLevels.length
     ? state.qualityLevels
