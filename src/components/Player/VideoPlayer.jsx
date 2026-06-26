@@ -318,11 +318,11 @@ export default function VideoPlayer({ channel }) {
     // 401/403 and playback dies with "token expired". Re-fetching the channel
     // JSON mints a fresh token; the updated channel.url flows back via props and
     // re-runs this effect. Guarded so a genuinely-dead stream can't loop forever.
-    const MAX_RECOVERIES = 2
+    // No auto-retry: show error immediately and let the user decide.
+    const MAX_RECOVERIES = 0
     const tryTokenRecovery = (label) => {
       if (recoverAttempts.current >= MAX_RECOVERIES) return false
       recoverAttempts.current += 1
-      console.warn(`[player] ${label} — refetching channel data for fresh token (attempt ${recoverAttempts.current}/${MAX_RECOVERIES})`)
       update({ error: null, loading: true })
       refreshChannels()
       return true
@@ -746,13 +746,8 @@ export default function VideoPlayer({ channel }) {
             hls.startLoad()
           } else if (channel.sonyLivUrl) {
             update({ error: 'Stream unavailable via proxy.', loading: false })
-          } else if (d.type === Hls.ErrorTypes.NETWORK_ERROR && tryTokenRecovery(`HLS fatal ${d.details}`)) {
-            // Expired CDN token (403/401 on manifest or segments) — refetch fresh channel data.
           } else {
-            update({ error: 'Stream error. Retrying…', loading: false })
-            hlsRetryTimer = setTimeout(() => {
-              if (!isCancelled && hlsRef.current) { hlsRef.current.startLoad(); update({ error: null, loading: true }) }
-            }, 3000)
+            update({ error: 'Stream failed. Try another channel.', loading: false })
           }
         }
       })

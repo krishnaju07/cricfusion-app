@@ -22,7 +22,7 @@ const FOOTAPI_META = {
   ntv:             { logo: 'WCT',  language: 'English' },
   dsports:         { logo: 'DSP',  language: 'Spanish' },
   m6:              { logo: 'M6',   language: 'French',     mimeType: 'application/dash+xml' },
-  telemundo:       { logo: 'TSN',  language: 'English' },
+  telemundo:       { logo: 'TMD',  language: 'Spanish' },
   telemundo2:      { logo: 'TMD',  language: 'Spanish' },
   tsn1:            { logo: 'TSN',  language: 'English' },
   fussball1:       { logo: 'FBL',  language: 'German' },
@@ -39,6 +39,7 @@ const FOOTAPI_META = {
   rte2:            { logo: 'RTE',  language: 'English' },
   canal5mx:        { logo: 'TDN',  language: 'Spanish' },
   trt1ios:         { logo: 'TRT',  language: 'Turkish' },
+  sportvbrazil:    { logo: 'SPV',  language: 'Portuguese' },
 }
 
 // Footapi IDs to skip:
@@ -54,6 +55,36 @@ const FOOTAPI_SKIP = new Set([
   'foxusa',        // iptv: Fox Sports 1 USA
   'foxavc',        // iptv: Fox Sports 1 USA (alt CDN, same content)
 ])
+
+// Priority channels pinned to the top of the FIFA section.
+// ITV is in footapi but only via ?id= endpoint (not returned by /main), so served here.
+// CT Sport is from the antik.sk IPTV service (not in footapi at all).
+const PRIORITY_STREAMS = [
+  {
+    id: 327,
+    key: 'fifa_itv1_eng',
+    name: 'ITV 1',
+    match: 'FIFA World Cup 2026 — Live',
+    logo: 'ITV',
+    language: 'English',
+    description: 'FIFA World Cup 2026 — ITV 1 (UK)',
+    url: 'https://abgh3fbaaaaaaaambylpff72g6up6.ta.bia-cf.live.pv-cdn.net/iad-nitro/live/dash/enc/0eiyyz8qzm/out/v1/dd17af8835fe4bd087d1a4e359b635d7/cenc.mpd',
+    keyId:  '30089c52924f037b225b82c616fee2a5',
+    drmKey: 'f55dc8b66ed4fc6753d6035ae7e17144',
+  },
+  {
+    id: 328,
+    key: 'fifa_ct_sport',
+    name: 'CT Sport',
+    match: 'FIFA World Cup 2026 — Live',
+    logo: 'CTS',
+    language: 'Czech',
+    description: 'FIFA World Cup 2026 — CT Sport (Czech)',
+    url: 'https://dash2.antik.sk/stream/nvidia_ct_sport/playlist_cenc.mpd',
+    keyId:  '11223344556677889900112233445566',
+    drmKey: '4b80724d0ef86bcb2c21f7999d67739d',
+  },
+]
 
 // Static channels not available from footapi
 const STATIC_STREAMS = [
@@ -285,5 +316,5 @@ export default async function handler(req, res) {
 
   res.setHeader('Cache-Control', 'no-store, no-cache')
   res.setHeader('Content-Type', 'application/json')
-  res.status(200).json([...dynamicChannels, ...STATIC_STREAMS])
+  res.status(200).json([...PRIORITY_STREAMS, ...dynamicChannels, ...STATIC_STREAMS])
 }
