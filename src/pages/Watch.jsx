@@ -140,7 +140,7 @@ export default function Watch() {
       <Sidebar currentChannelId={channel.id} />
 
       <main ref={mainRef} className="flex-1 overflow-y-auto">
-        <div className="p-3 md:p-5 max-w-5xl mx-auto space-y-4">
+        <div className="p-3 md:p-5 pb-36 md:pb-8 max-w-5xl mx-auto space-y-3 md:space-y-4">
           {/* Back */}
           <motion.button
             initial={{ opacity: 0, x: -10 }}
@@ -182,10 +182,11 @@ export default function Watch() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.12 }}
-            className="space-y-3"
+            className="space-y-2.5 md:space-y-3"
           >
-            <div className="flex flex-col sm:flex-row sm:items-start gap-3">
-              <div className="flex-1 space-y-2 min-w-0">
+            {/* Title row + action buttons side-by-side on all sizes */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0 space-y-1.5">
                 <div className="flex items-center gap-2 flex-wrap">
                   {channel.isLive && (
                     <span className="flex items-center gap-1 bg-red-600 text-white text-xs font-black px-2 py-0.5 rounded">
@@ -201,11 +202,13 @@ export default function Watch() {
                   </span>
                   <span className="text-white/30 text-xs capitalize">{channel.category}</span>
                 </div>
-                <h1 className="text-white font-bold text-xl md:text-2xl leading-tight">{channel.currentMatch}</h1>
-                <p className="text-white/50 text-sm leading-relaxed">{channel.description}</p>
+                <h1 className="text-white font-bold text-base md:text-2xl leading-snug line-clamp-2">{channel.currentMatch}</h1>
+                {/* Description: only on sm+ to save vertical space on mobile */}
+                <p className="hidden sm:block text-white/50 text-sm leading-relaxed">{channel.description}</p>
               </div>
 
-              <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Action buttons — always visible, text labels only on sm+ */}
+              <div className="flex items-center gap-2 flex-shrink-0 pt-0.5">
                 <motion.button
                   whileTap={{ scale: 0.92 }}
                   onClick={() => toggleFavorite(channel.id)}
@@ -289,20 +292,22 @@ export default function Watch() {
               </div>
             </div>
 
-            {/* Stats row */}
-            <div className="flex items-center gap-4 flex-wrap text-sm">
+            {/* Stats row — 2-col grid on mobile, flex row on sm+ */}
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1 sm:flex sm:items-center sm:gap-4 text-xs md:text-sm">
               <div className="flex items-center gap-1.5 text-white/50">
-                <Users size={13} /><span>{channel.viewers} watching</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-white/50">
-                <Globe size={13} /><span>{channel.language}</span>
+                <Globe size={12} /><span>{channel.language}</span>
               </div>
               <div className="flex items-center gap-1.5 text-brand-400">
-                <Zap size={13} /><span>{channel.badge} Quality</span>
+                <Zap size={12} /><span>{channel.badge} Quality</span>
               </div>
               <div className="flex items-center gap-1.5 text-white/50 capitalize">
-                <Star size={13} /><span>{channel.category}</span>
+                <Star size={12} /><span>{channel.category}</span>
               </div>
+              {channel.viewers && channel.viewers !== '—' && (
+                <div className="flex items-center gap-1.5 text-white/50">
+                  <Users size={12} /><span>{channel.viewers} watching</span>
+                </div>
+              )}
             </div>
 
             {/* Score card */}
@@ -388,8 +393,8 @@ export default function Watch() {
         </div>
       </main>
 
-      {/* ── Mobile: floating channel switcher button ─────────────────────── */}
-      <div className="md:hidden fixed bottom-[72px] right-4 z-40">
+      {/* ── Mobile: floating channel switcher button — sits above the h-16 bottom nav ── */}
+      <div className="md:hidden fixed bottom-20 right-4 z-40">
         <motion.button
           whileTap={{ scale: 0.9 }}
           onClick={() => setShowChannelSheet(true)}
