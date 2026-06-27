@@ -4,7 +4,6 @@
     { "src": "/sl-cdn/(.*)",  "dest": "/api/sl-cdn?path=$1" },
     { "src": "/cf-geo/(.*)",  "dest": "/api/cf-geo?path=$1" },
     { "handle": "filesystem" },
-    { "src": "/watch/(.*)",   "dest": "/api/og-preview?id=$1" },
     { "src": "/(.*)",         "dest": "/index.html" }
   ]
 }
