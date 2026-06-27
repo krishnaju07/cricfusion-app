@@ -313,6 +313,7 @@ export function mapFifaChannel(s) {
     description:  s.description,
     score:        null,
     url:          s.url,
+    vpn:          s.vpn || null,
     mimeType:     s.mimeType || undefined,
     reqHeaders:   s.reqHeaders || null,
     clearKey:     s.keyId ? { keyId: s.keyId, key: s.drmKey } : null,

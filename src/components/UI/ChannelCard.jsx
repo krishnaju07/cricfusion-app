@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Users, Play } from 'lucide-react'
 
+const VPN_FLAG = { DE: '🇩🇪', AT: '🇦🇹', BE: '🇧🇪', SK: '🇸🇰', CZ: '🇨🇿', FR: '🇫🇷', IE: '🇮🇪', CA: '🇨🇦', SA: '🇸🇦' }
+
 export default function ChannelCard({ channel, index = 0, animated = true }) {
   const navigate = useNavigate()
   const cardRef  = useRef(null)
@@ -125,6 +127,14 @@ export default function ChannelCard({ channel, index = 0, animated = true }) {
               {channel.status === 'hq' && (
                 <span className="text-[9px] font-black px-1.5 py-0.5 rounded backdrop-blur-sm bg-yellow-500/90 text-black">
                   ★ HQ
+                </span>
+              )}
+              {channel.vpn && VPN_FLAG[channel.vpn] && (
+                <span
+                  title={`${channel.vpn} VPN required`}
+                  className="text-[9px] font-black px-1.5 py-0.5 rounded backdrop-blur-sm bg-orange-500/90 text-white"
+                >
+                  {VPN_FLAG[channel.vpn]} VPN
                 </span>
               )}
               <span className={`text-[9px] font-black px-1.5 py-0.5 rounded backdrop-blur-sm ${
