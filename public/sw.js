@@ -25,7 +25,7 @@ self.addEventListener('fetch', (event) => {
   // ── Batch channel list ────────────────────────────────────────────────────
   if (url.pathname === '/cf-data') {
     event.respondWith(
-      fetch('/api/cf-data', { cache: 'no-store', credentials: 'same-origin' })
+      fetch('/api/cf-proxy?src=data', { cache: 'no-store', credentials: 'same-origin' })
         .then((r) => r.text())
         .then(makeResponse)
         .catch(() => new Response('error', { status: 502 }))
@@ -36,7 +36,7 @@ self.addEventListener('fetch', (event) => {
   // ── FanCode live events ───────────────────────────────────────────────────
   if (url.pathname === '/cf-fancode') {
     event.respondWith(
-      fetch('/api/cf-fancode', { cache: 'no-store', credentials: 'same-origin' })
+      fetch('/api/cf-proxy?src=fancode', { cache: 'no-store', credentials: 'same-origin' })
         .then((r) => r.text())
         .then(makeResponse)
         .catch(() => new Response('error', { status: 502 }))
@@ -47,7 +47,7 @@ self.addEventListener('fetch', (event) => {
   // ── Sony LIV live events ──────────────────────────────────────────────────
   if (url.pathname === '/cf-sonyliv') {
     event.respondWith(
-      fetch('/api/cf-sonyliv', { cache: 'no-store', credentials: 'same-origin' })
+      fetch('/api/cf-proxy?src=sonyliv', { cache: 'no-store', credentials: 'same-origin' })
         .then((r) => r.text())
         .then(makeResponse)
         .catch(() => new Response('error', { status: 502 }))
