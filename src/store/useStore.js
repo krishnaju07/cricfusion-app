@@ -311,11 +311,19 @@ export const useStore = create((set, get) => ({
       )
     }
 
-    // ── Tamil channels (famelack India API) ───────────────────────────────
+    // ── Tamil channels (famelack India API) — only add channels not already
+    //    covered by the static IPTV_TAMIL_CHANNELS list (avoids duplicates).
     if (FEATURES.IPTV_TAMIL) {
+      const staticTamilNames = new Set(
+        IPTV_TAMIL_CHANNELS.map((ch) =>
+          ch.name.replace(/\s*\([^)]+\)\s*/g, '').trim().toLowerCase()
+        )
+      )
       tasks.push(
         fetch('/api/cf-famelack?src=tamil').then((r) => r.json()).then((json) => {
-          sources.tamil = Array.isArray(json) ? json : []
+          sources.tamil = (Array.isArray(json) ? json : []).filter(
+            (ch) => !staticTamilNames.has(ch.name.replace(/\s*\([^)]+\)\s*/g, '').trim().toLowerCase())
+          )
           commit()
         }).catch((e) => console.warn('Tamil channels load failed:', e))
       )
