@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Users, Play } from 'lucide-react'
 
 const VPN_FLAG = { DE: '🇩🇪', AT: '🇦🇹', BE: '🇧🇪', SK: '🇸🇰', CZ: '🇨🇿', FR: '🇫🇷', IE: '🇮🇪', CA: '🇨🇦', SA: '🇸🇦' }
+const VPN_NAME = { DE: 'Germany', AT: 'Austria', BE: 'Belgium', SK: 'Slovakia', CZ: 'Czech Republic', FR: 'France', IE: 'Ireland', CA: 'Canada', SA: 'Saudi Arabia' }
 
 export default function ChannelCard({ channel, index = 0, animated = true }) {
   const navigate = useNavigate()
@@ -131,7 +132,7 @@ export default function ChannelCard({ channel, index = 0, animated = true }) {
               )}
               {channel.vpn && VPN_FLAG[channel.vpn] && (
                 <span
-                  title={`${channel.vpn} VPN required`}
+                  title={`${VPN_NAME[channel.vpn] || channel.vpn} VPN required`}
                   className="text-[9px] font-black px-1.5 py-0.5 rounded backdrop-blur-sm bg-orange-500/90 text-white"
                 >
                   {VPN_FLAG[channel.vpn]} VPN
