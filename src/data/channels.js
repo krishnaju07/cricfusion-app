@@ -295,6 +295,26 @@ export function mapStarSonyChannel(c, id) {
   }
 }
 
+// Auto-detect VPN requirement from stream URL hostname.
+// Covers known geo-restricted CDN domains; explicit s.vpn always wins.
+function detectVpn(url) {
+  if (!url) return null
+  try {
+    const h = new URL(url).hostname
+    if (h.includes('t-online.de'))                      return 'DE'
+    if (h.endsWith('.ors.at') || h.endsWith('.orf.at')) return 'AT'
+    if (h.endsWith('.vrtcdn.be') || h.endsWith('.rtbf.be') || h.includes('redbee.live')) return 'BE'
+    if (h.endsWith('.antik.sk'))                        return 'SK'
+    if (h.includes('m6web') || h.endsWith('.6cloud.fr')) return 'FR'
+    if (h.endsWith('.rte.ie'))                          return 'IE'
+    if (h.endsWith('.trt.com.tr'))                      return 'TR'
+    if (h.endsWith('.tvp.pl'))                          return 'PL'
+    if (h.endsWith('.svt.se'))                          return 'SE'
+    if (h.endsWith('.nrk.no'))                          return 'NO'
+  } catch { /* invalid URL */ }
+  return null
+}
+
 // ── FIFA 2026 channels — fetched at runtime via /cf-fifa (server-side) ───────
 // URLs and clearKeys are NOT in this bundle. See api/cf-fifa.js.
 export function mapFifaChannel(s) {
@@ -313,7 +333,7 @@ export function mapFifaChannel(s) {
     description:  s.description,
     score:        null,
     url:          s.url,
-    vpn:          s.vpn || null,
+    vpn:          s.vpn || detectVpn(s.url),
     mimeType:     s.mimeType || undefined,
     reqHeaders:   s.reqHeaders || null,
     clearKey:     s.keyId ? { keyId: s.keyId, key: s.drmKey } : null,
