@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
 import Hls from 'hls.js'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Lock, LockOpen, Sun, Volume2 as VolumeSwipeIcon, Wifi, WifiOff } from 'lucide-react'
+import { ArrowLeft, Lock, LockOpen, Sun, Volume2 as VolumeSwipeIcon, Wifi, WifiOff } from 'lucide-react'
 import PlayerControls from './PlayerControls'
 import SettingsMenu from './SettingsMenu'
 import SeekIndicator from './SeekIndicator'
@@ -88,7 +88,7 @@ function QualityWifi({ quality, actualHeight }) {
   return <Wifi size={14} style={{ color, transition: 'color 0.4s' }} title={tip} />
 }
 
-export default function VideoPlayer({ channel, onLockChange }) {
+export default function VideoPlayer({ channel, onLockChange, onBack }) {
   const videoRef    = useRef(null)
   const hlsRef      = useRef(null)
   const shakaRef    = useRef(null)
@@ -1132,14 +1132,17 @@ export default function VideoPlayer({ channel, onLockChange }) {
       return
     }
     if (e.touches.length === 1) {
+      const t = e.touches[0]
+      // Always store start for swipe-up-to-fullscreen (works outside fullscreen)
+      gestureRef.current.swipeStartX = t.clientX
+      gestureRef.current.swipeStartY = t.clientY
       // Don't hijack swipes that belong to a scrollable overlay (settings sheet, hints)
       if (e.target?.closest?.('[data-no-gesture]')) return
       if (!liveRef.current.fullscreen) return  // brightness/volume swipe only in fullscreen
-      const t = e.touches[0]
       const rect = containerRef.current?.getBoundingClientRect()
       if (!rect) return
       const side = (t.clientX - rect.left) < rect.width / 2 ? 'left' : 'right'
-      gestureRef.current = { active: true, isSwipe: false, side, startY: t.clientY, startValue: side === 'left' ? liveRef.current.brightness : liveRef.current.volume, pinchActive: false, pinchDist: 0, startZoom: liveRef.current.zoom }
+      gestureRef.current = { active: true, isSwipe: false, side, startY: t.clientY, startValue: side === 'left' ? liveRef.current.brightness : liveRef.current.volume, pinchActive: false, pinchDist: 0, startZoom: liveRef.current.zoom, swipeStartX: t.clientX, swipeStartY: t.clientY }
     }
   }, [])
 
@@ -1174,12 +1177,21 @@ export default function VideoPlayer({ channel, onLockChange }) {
     }
   }, [update])
 
-  const handleTouchEnd = useCallback(() => {
+  const handleTouchEnd = useCallback((e) => {
+    const endY = e?.changedTouches?.[0]?.clientY
+    const endX = e?.changedTouches?.[0]?.clientX
+    const { swipeStartY = 0, swipeStartX = 0 } = gestureRef.current
     gestureRef.current.active = false
     gestureRef.current.pinchActive = false
     clearTimeout(swipeHideTimer.current)
     swipeHideTimer.current = setTimeout(() => update({ swipeIndicator: null }), 1200)
-  }, [update])
+    // Swipe up in portrait/non-fullscreen → enter fullscreen
+    if (!liveRef.current.fullscreen && !liveRef.current.locked && endY !== undefined) {
+      const dy = swipeStartY - endY           // positive = upward swipe
+      const dx = Math.abs(swipeStartX - (endX ?? swipeStartX))
+      if (dy > 80 && dy > dx * 1.5) toggleFullscreen()
+    }
+  }, [update, toggleFullscreen])
 
   // Register non-passive listeners so preventDefault actually stops page scroll
   useEffect(() => {
@@ -1497,6 +1509,15 @@ export default function VideoPlayer({ channel, onLockChange }) {
             {/* Top bar */}
             <div className="flex items-center justify-between px-4 pt-3 pb-2">
               <div className="flex items-center gap-2 min-w-0">
+                {/* Back button — mobile only, auto-hides with controls */}
+                {onBack && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onBack() }}
+                    className="md:hidden flex items-center justify-center w-8 h-8 rounded-full bg-black/40 text-white/90 flex-shrink-0 active:scale-90 transition-transform"
+                  >
+                    <ArrowLeft size={16} />
+                  </button>
+                )}
                 {channel?.isLive && (
                   <span className="flex items-center gap-1.5 bg-red-600 text-white text-xs font-black px-2 py-0.5 rounded flex-shrink-0">
                     <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" /> LIVE
@@ -1516,14 +1537,21 @@ export default function VideoPlayer({ channel, onLockChange }) {
               </div>
             </div>
 
-            {/* Center click zone */}
+            {/* Center click zone — single tap: toggle controls | double tap: seek ±10s */}
             <div className="absolute inset-0 cursor-pointer" onClick={handleCenterClick}>
               <AnimatePresence>
                 {!state.playing && !state.loading && (
                   <motion.div
                     initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 1.4, opacity: 0 }}
-                    className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                    className="absolute inset-0 flex items-center justify-center"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      clearTimeout(clickTimer.current)
+                      clickTimer.current = null
+                      togglePlay()
+                      showControlsTemporarily()
+                    }}
                   >
                     <div className="w-20 h-20 bg-black/55 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/20">
                       <svg className="w-9 h-9 text-white ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>

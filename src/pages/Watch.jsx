@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowLeft, Users, Globe, Zap, Share2, Link2, Check,
-  Heart, ChevronRight, Radio, Tv2, X, Search
+  Heart, ChevronRight, Radio, Tv2, X, Search,
 } from 'lucide-react'
 import VideoPlayer from '../components/Player/VideoPlayer'
 import Sidebar from '../components/Layout/Sidebar'
@@ -143,18 +143,6 @@ export default function Watch() {
         {/* Desktop: padded, max-width, rounded */}
         <div className="relative md:pt-5 md:px-5 md:max-w-5xl md:mx-auto">
 
-          {/* Back button — floats over player on mobile */}
-          <motion.button
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.1 }}
-            onClick={() => navigate(-1)}
-            className="md:hidden absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm text-white/90 text-xs font-semibold px-3 py-1.5 rounded-full border border-white/10"
-          >
-            <ArrowLeft size={13} />
-            Back
-          </motion.button>
-
           <motion.div
             ref={playerRef}
             key={channel.key}
@@ -168,6 +156,7 @@ export default function Watch() {
             <VideoPlayer
               channel={channel}
               onLockChange={(locked) => { playerLockedRef.current = locked }}
+              onBack={() => navigate(-1)}
             />
           </motion.div>
         </div>
