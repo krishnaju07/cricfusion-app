@@ -86,7 +86,7 @@ function ChannelRow({ ch, isActive, isSameCat, activeRef, onClick }) {
 
 // ── Collapsible group section ─────────────────────────────────────────────────
 function GroupSection({ cat, channels, currentChannelId, activeRef, navigate, defaultOpen }) {
-  const hasActive = channels.some((c) => c.id === currentChannelId)
+  const hasActive = channels.some((c) => c.key === currentChannelId)
   // `null` = follow default; once the user toggles, honour their choice.
   const [userOpen, setUserOpen] = useState(null)
   // The group holding the active channel stays open so its row is in the DOM
@@ -129,10 +129,10 @@ function GroupSection({ cat, channels, currentChannelId, activeRef, navigate, de
               <ChannelRow
                 key={ch.id}
                 ch={ch}
-                isActive={ch.id === currentChannelId}
+                isActive={ch.key === currentChannelId}
                 isSameCat={false}
                 activeRef={activeRef}
-                onClick={() => navigate(`/watch/${ch.id}`)}
+                onClick={() => navigate(`/watch/${encodeURIComponent(ch.key)}`)}
               />
             ))}
           </motion.div>
@@ -154,7 +154,7 @@ export default function Sidebar({ currentChannelId }) {
   const [catFilter, setCatFilter] = useState('all')
 
   const currentChannel = useMemo(
-    () => channels.find((c) => c.id === currentChannelId),
+    () => channels.find((c) => c.key === currentChannelId),
     [channels, currentChannelId]
   )
 
@@ -324,10 +324,10 @@ export default function Sidebar({ currentChannelId }) {
                   <ChannelRow
                     key={ch.id}
                     ch={ch}
-                    isActive={ch.id === currentChannelId}
+                    isActive={ch.key === currentChannelId}
                     isSameCat={currentChannel && ch.category === currentChannel.category}
                     activeRef={activeRef}
-                    onClick={() => navigate(`/watch/${ch.id}`)}
+                    onClick={() => navigate(`/watch/${encodeURIComponent(ch.key)}`)}
                   />
                 ))}
               </div>

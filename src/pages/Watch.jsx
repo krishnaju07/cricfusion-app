@@ -27,11 +27,11 @@ export default function Watch() {
   const touchStartY = useRef(null)
   const playerLockedRef = useRef(false)
 
-  const channel = channels.find((c) => String(c.id) === id)
+  const channel = channels.find((c) => c.key === id)
   const liked = favorites.includes(channel?.id)
 
   // Same category first, then other live channels
-  const others = channels.filter((c) => String(c.id) !== id && c.isLive)
+  const others = channels.filter((c) => c.key !== id && c.isLive)
   const sameCategory = others.filter((c) => c.category === channel?.category)
   const different   = others.filter((c) => c.category !== channel?.category)
   const related     = [...sameCategory, ...different].slice(0, 12)
@@ -39,7 +39,7 @@ export default function Watch() {
 
   // Ordered list including current channel (for swipe prev/next)
   const navList = channel ? [channel, ...sameCategory, ...different] : liveChannels
-  const navIdx  = navList.findIndex((c) => String(c.id) === id)
+  const navIdx  = navList.findIndex((c) => c.key === id)
   const prevCh  = navIdx > 0 ? navList[navIdx - 1] : null
   const nextCh  = navIdx < navList.length - 1 ? navList[navIdx + 1] : null
 
@@ -116,8 +116,8 @@ export default function Watch() {
     if (playerLockedRef.current) return
     // Only act on predominantly horizontal swipes
     if (Math.abs(dx) < 55 || Math.abs(dy) > Math.abs(dx) * 0.8) return
-    if (dx < 0 && nextCh) navigate(`/watch/${nextCh.id}`)   // swipe left → next
-    if (dx > 0 && prevCh) navigate(`/watch/${prevCh.id}`)   // swipe right → prev
+    if (dx < 0 && nextCh) navigate(`/watch/${encodeURIComponent(nextCh.key)}`)   // swipe left → next
+    if (dx > 0 && prevCh) navigate(`/watch/${encodeURIComponent(prevCh.key)}`)   // swipe right → prev
   }, [nextCh, prevCh, navigate])
 
   if (!channel) {
@@ -140,7 +140,7 @@ export default function Watch() {
   return (
     <div className="flex flex-1 overflow-hidden min-h-0">
       {/* Desktop sidebar */}
-      <Sidebar currentChannelId={channel.id} />
+      <Sidebar currentChannelId={channel.key} />
 
       <main ref={mainRef} className="flex-1 overflow-y-auto">
         <div className="p-3 md:p-5 pb-36 md:pb-8 max-w-5xl mx-auto space-y-3 md:space-y-4">
@@ -361,7 +361,7 @@ export default function Watch() {
                   <motion.button
                     key={ch.id}
                     whileTap={{ scale: 0.93 }}
-                    onClick={() => navigate(`/watch/${ch.id}`)}
+                    onClick={() => navigate(`/watch/${encodeURIComponent(ch.key)}`)}
                     className={`flex-shrink-0 flex flex-col items-center gap-1 p-2.5 rounded-xl border transition-all min-w-[72px] ${
                       ch.category === channel.category
                         ? 'bg-brand-500/10 border-brand-500/30 hover:border-brand-400/60'
@@ -465,11 +465,11 @@ export default function Watch() {
               {/* Channel list */}
               <div className="overflow-y-auto flex-1 px-3 pb-8 space-y-1">
                 {sheetChannels.map((ch) => {
-                  const isActive = ch.id === channel.id
+                  const isActive = ch.key === channel.key
                   return (
                     <button
-                      key={ch.id}
-                      onClick={() => { navigate(`/watch/${ch.id}`); setShowChannelSheet(false); setSheetSearch('') }}
+                      key={ch.key}
+                      onClick={() => { navigate(`/watch/${encodeURIComponent(ch.key)}`); setShowChannelSheet(false); setSheetSearch('') }}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all text-left ${
                         isActive
                           ? 'bg-brand-500/20 border-brand-500/40'

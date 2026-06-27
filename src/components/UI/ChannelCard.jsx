@@ -38,7 +38,7 @@ export default function ChannelCard({ channel, index = 0, animated = true }) {
       onMouseMove={handleMouseMove}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={resetTilt}
-      onClick={() => navigate(`/watch/${channel.id}`)}
+      onClick={() => navigate(`/watch/${encodeURIComponent(channel.key)}`)}
       style={{ perspective: 900, WebkitTapHighlightColor: 'transparent', cursor: 'pointer' }}
     >
       <motion.div
