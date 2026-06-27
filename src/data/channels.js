@@ -295,22 +295,40 @@ export function mapStarSonyChannel(c, id) {
   }
 }
 
-// Auto-detect VPN requirement from stream URL hostname.
-// Covers known geo-restricted CDN domains; explicit s.vpn always wins.
+// Amazon IVS / Akamai region path prefixes that indicate geo-restriction.
+// e.g. /gru-nitro/ = São Paulo (Brazil), /fra-nitro/ = Frankfurt (Germany).
+const GEO_NITRO = { gru: 'BR', fra: 'DE' }
+
+// Auto-detect VPN requirement from stream URL.
+// Unwraps iptv-eldbert proxy URLs so the real CDN host/path can be inspected.
+// Explicit s.vpn field always wins over auto-detection.
 function detectVpn(url) {
   if (!url) return null
+  let target = url
   try {
-    const h = new URL(url).hostname
-    if (h.includes('t-online.de'))                      return 'DE'
-    if (h.endsWith('.ors.at') || h.endsWith('.orf.at')) return 'AT'
+    // iptv-eldbert wraps real URL as ?url= — decode it first
+    const parsed = new URL(url)
+    if (parsed.hostname === 'iptv-eldbert.xyz' && parsed.searchParams.has('url')) {
+      target = parsed.searchParams.get('url')
+    }
+  } catch { return null }
+  try {
+    const { hostname: h, pathname: p } = new URL(target)
+    // Hostname-based rules
+    if (h.includes('t-online.de'))                       return 'DE'
+    if (h.endsWith('.ors.at') || h.endsWith('.orf.at'))  return 'AT'
     if (h.endsWith('.vrtcdn.be') || h.endsWith('.rtbf.be') || h.includes('redbee.live')) return 'BE'
-    if (h.endsWith('.antik.sk'))                        return 'SK'
+    if (h.endsWith('.antik.sk'))                         return 'SK'
     if (h.includes('m6web') || h.endsWith('.6cloud.fr')) return 'FR'
-    if (h.endsWith('.rte.ie'))                          return 'IE'
-    if (h.endsWith('.trt.com.tr'))                      return 'TR'
-    if (h.endsWith('.tvp.pl'))                          return 'PL'
-    if (h.endsWith('.svt.se'))                          return 'SE'
-    if (h.endsWith('.nrk.no'))                          return 'NO'
+    if (h.endsWith('.rte.ie'))                           return 'IE'
+    if (h.endsWith('.trt.com.tr'))                       return 'TR'
+    if (h.endsWith('.tvp.pl'))                           return 'PL'
+    if (h.endsWith('.svt.se'))                           return 'SE'
+    if (h.endsWith('.nrk.no'))                           return 'NO'
+    // Path-based: Amazon IVS region prefix (e.g. /gru-nitro/ = Brazil)
+    for (const [code, country] of Object.entries(GEO_NITRO)) {
+      if (p.startsWith(`/${code}-`) || p.includes(`/${code}-nitro/`)) return country
+    }
   } catch { /* invalid URL */ }
   return null
 }

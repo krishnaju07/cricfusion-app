@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Users, Play } from 'lucide-react'
 
-const VPN_FLAG = { DE: '🇩🇪', AT: '🇦🇹', BE: '🇧🇪', SK: '🇸🇰', CZ: '🇨🇿', FR: '🇫🇷', IE: '🇮🇪', CA: '🇨🇦', SA: '🇸🇦' }
-const VPN_NAME = { DE: 'Germany', AT: 'Austria', BE: 'Belgium', SK: 'Slovakia', CZ: 'Czech Republic', FR: 'France', IE: 'Ireland', CA: 'Canada', SA: 'Saudi Arabia' }
+const VPN_FLAG = { DE: '🇩🇪', AT: '🇦🇹', BE: '🇧🇪', SK: '🇸🇰', CZ: '🇨🇿', FR: '🇫🇷', IE: '🇮🇪', CA: '🇨🇦', SA: '🇸🇦', BR: '🇧🇷', TR: '🇹🇷', PL: '🇵🇱', SE: '🇸🇪', NO: '🇳🇴' }
+const VPN_NAME = { DE: 'Germany', AT: 'Austria', BE: 'Belgium', SK: 'Slovakia', CZ: 'Czech Republic', FR: 'France', IE: 'Ireland', CA: 'Canada', SA: 'Saudi Arabia', BR: 'Brazil', TR: 'Turkey', PL: 'Poland', SE: 'Sweden', NO: 'Norway' }
 
 export default function ChannelCard({ channel, index = 0, animated = true }) {
   const navigate = useNavigate()
