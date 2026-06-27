@@ -5,6 +5,7 @@ import {
   mapFifaChannel, mapStarSonyChannel,
 } from '../data/channels'
 import { EXTRA_CHANNELS } from '../data/extra-channels'
+import { IPTV_TAMIL_CHANNELS } from '../data/iptv-tamil'
 import { parseM3u, mapM3uChannel } from '../utils/parseM3u'
 import { isDevToolsOpen } from '../utils/devtools-guard'
 import { FEATURES } from '../config/features'
@@ -119,7 +120,7 @@ export const useStore = create((set, get) => ({
   },
 
   // ── Channels (loaded from API) ─────────────────────────────────────────
-  channels: [...STATIC_CHANNELS, ...EXTRA_CHANNELS],  // start with static; dynamic channels loaded at runtime
+  channels: [...STATIC_CHANNELS, ...EXTRA_CHANNELS, ...(FEATURES.IPTV_TAMIL ? IPTV_TAMIL_CHANNELS : [])],  // start with static; dynamic channels loaded at runtime
   channelsLoading: false,
   channelsError: null,
   lastFetched: null,
@@ -169,6 +170,7 @@ export const useStore = create((set, get) => ({
         ...ORDER.flatMap((k) => sources[k]),
         ...STATIC_CHANNELS,
         ...EXTRA_CHANNELS,
+        ...(FEATURES.IPTV_TAMIL ? IPTV_TAMIL_CHANNELS : []),
       ]
       const seen = new Set()
       const deduped = allChannels.filter((ch) => {
