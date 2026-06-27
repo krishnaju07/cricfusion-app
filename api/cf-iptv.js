@@ -25,21 +25,49 @@ function proxyStreamUrl(url) {
   return `${IPTV_PROXY}?url=${encodeURIComponent(url)}`
 }
 
+// Amazon IVS / Akamai region path prefixes that indicate geo-restriction.
+// Detect from the RAW url before proxy-wrapping so patterns are always visible.
+const GEO_NITRO = { gru: 'BR', fra: 'DE' }
+
+// Name-based fallback for channels whose URL might not contain region hints.
+const NAME_VPN = {
+  'cazé tv': 'BR', 'caze tv': 'BR', 'sportv': 'BR', 'globo': 'BR',
+  'band': 'BR', 'record': 'BR',
+}
+
+function detectChannelVpn(url, name) {
+  // Try URL path (raw, before proxy wrapping)
+  try {
+    const p = new URL(url).pathname
+    for (const [code, country] of Object.entries(GEO_NITRO)) {
+      if (p.startsWith(`/${code}-`) || p.includes(`/${code}-nitro/`)) return country
+    }
+  } catch { /* ignore */ }
+  // Fallback: channel name lookup
+  const key = (name || '').replace(/^⚽\s*/, '').toLowerCase()
+  for (const [fragment, country] of Object.entries(NAME_VPN)) {
+    if (key.includes(fragment)) return country
+  }
+  return null
+}
+
 function slugify(name) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
 }
 
 let _id = 500
 function mapChannel(ch) {
+  const name = ch.name.replace(/^⚽\s*/, '')
   return {
     id:          _id++,
     key:         `iptv_${slugify(ch.name)}`,
-    name:        ch.name.replace(/^⚽\s*/, ''),
+    name,
     match:       'FIFA World Cup 2026 — Live',
     logo:        'FIFA',
     badge:       'HD',
     language:    'English',
-    description: `FIFA World Cup 2026 — ${ch.name.replace(/^⚽\s*/, '')}`,
+    description: `FIFA World Cup 2026 — ${name}`,
+    vpn:         detectChannelVpn(ch.url, ch.name),
     url:         proxyStreamUrl(ch.url),
     reqHeaders:  { referer: 'https://iptv-eldbert.xyz/iptv/' },
     keyId:       null,
