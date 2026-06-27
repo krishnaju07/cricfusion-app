@@ -6,7 +6,7 @@ import fs   from 'fs'
 import path from 'path'
 
 const SITE      = 'https://cricfusion.vercel.app'
-const OG_IMAGE  = `${SITE}/og-image.png`
+const OG_IMAGE  = `${SITE}/og-image.jpeg`
 
 const BOT_UA = /facebookexternalhit|twitterbot|whatsapp|telegrambot|telegrambot|linkedinbot|slackbot|discordbot|applebot|googlebot|bingbot|iMessage|vkshare|outbrain|quora/i
 
