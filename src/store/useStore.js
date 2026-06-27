@@ -4,9 +4,7 @@ import {
   DYNAMIC_CHANNEL_IDS, mapDynamicChannel, mapFanCodeChannel, mapSonyLivChannel,
   mapFifaChannel, mapStarSonyChannel,
 } from '../data/channels'
-import { IPTV_SPORTS_CHANNELS } from '../data/iptv-sports'
 import { EXTRA_CHANNELS } from '../data/extra-channels'
-import { IPTV_TAMIL_CHANNELS } from '../data/iptv-tamil'
 import { parseM3u, mapM3uChannel } from '../utils/parseM3u'
 import { isDevToolsOpen } from '../utils/devtools-guard'
 import { FEATURES } from '../config/features'
@@ -121,7 +119,7 @@ export const useStore = create((set, get) => ({
   },
 
   // ── Channels (loaded from API) ─────────────────────────────────────────
-  channels: [...STATIC_CHANNELS, ...EXTRA_CHANNELS, ...IPTV_SPORTS_CHANNELS, ...(FEATURES.IPTV_TAMIL ? IPTV_TAMIL_CHANNELS : [])],  // start with static; FIFA + API channels loaded at runtime
+  channels: [...STATIC_CHANNELS, ...EXTRA_CHANNELS],  // start with static; dynamic channels loaded at runtime
   channelsLoading: false,
   channelsError: null,
   lastFetched: null,
@@ -160,17 +158,17 @@ export const useStore = create((set, get) => ({
       starsony: [],
       tp:       [],
       m3u:      [],
+      sports:   [],
+      tamil:    [],
     }
     // Fixed render order — independent of which fetch finishes first.
-    const ORDER = ['api', 'dynamic', 'fifa', 'fancode', 'sonyliv', 'starsony', 'tp', 'm3u']
+    const ORDER = ['api', 'dynamic', 'fifa', 'fancode', 'sonyliv', 'starsony', 'tp', 'm3u', 'sports', 'tamil']
 
     const commit = (extra = {}) => {
       const allChannels = [
         ...ORDER.flatMap((k) => sources[k]),
         ...STATIC_CHANNELS,
         ...EXTRA_CHANNELS,
-        ...IPTV_SPORTS_CHANNELS,
-        ...(FEATURES.IPTV_TAMIL ? IPTV_TAMIL_CHANNELS : []),
       ]
       const seen = new Set()
       const deduped = allChannels.filter((ch) => {
@@ -298,6 +296,26 @@ export const useStore = create((set, get) => ({
             .map((ch, i) => mapM3uChannel(ch, 400 + i + 1))
           commit()
         }).catch((e) => console.warn('M3U load failed:', e))
+      )
+    }
+
+    // ── Global sports channels (famelack sports) ──────────────────────────
+    if (FEATURES.IPTV_SPORTS) {
+      tasks.push(
+        fetch('/api/cf-famelack?src=sports').then((r) => r.json()).then((json) => {
+          sources.sports = Array.isArray(json) ? json : []
+          commit()
+        }).catch((e) => console.warn('IPTV Sports load failed:', e))
+      )
+    }
+
+    // ── Tamil channels (famelack India API) ───────────────────────────────
+    if (FEATURES.IPTV_TAMIL) {
+      tasks.push(
+        fetch('/api/cf-famelack?src=tamil').then((r) => r.json()).then((json) => {
+          sources.tamil = Array.isArray(json) ? json : []
+          commit()
+        }).catch((e) => console.warn('Tamil channels load failed:', e))
       )
     }
 

@@ -412,6 +412,37 @@ function m3uDevProxy() {
   }
 }
 
+// Dev-time proxy for /api/cf-famelack — fetches, gunzips, and filters Tamil channels
+function famelackDevProxy() {
+  return {
+    name: 'famelack-api-dev-proxy',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        if (!req.url?.startsWith('/api/cf-famelack')) return next()
+        res.setHeader('Access-Control-Allow-Origin', '*')
+        if (req.method === 'OPTIONS') { res.statusCode = 204; return res.end() }
+        try {
+          const qs = new URL(req.url, 'http://localhost')
+          const handlerUrl = pathToFileURL(nodePath.join(process.cwd(), 'api', 'cf-famelack.js')).href + `?t=${Date.now()}`
+          const mod = await import(handlerUrl)
+          const fakeReq = { method: req.method, query: Object.fromEntries(qs.searchParams), headers: req.headers }
+          const fakeRes = {
+            _status: 200,
+            status(c) { this._status = c; return this },
+            end(b) { res.statusCode = this._status; res.end(b) },
+            json(b) { res.setHeader('Content-Type', 'application/json'); res.statusCode = this._status; res.end(JSON.stringify(b)) },
+            setHeader(k, v) { res.setHeader(k, v) },
+          }
+          await mod.default(fakeReq, fakeRes)
+        } catch (e) {
+          console.error('[famelack-api-dev]', e)
+          res.statusCode = 500; res.end('dev error: ' + e.message)
+        }
+      })
+    },
+  }
+}
+
 // Dev-time proxy for /api/cf-iptv — runs the Vercel handler locally
 function iptvDevProxy() {
   return {
@@ -444,7 +475,7 @@ function iptvDevProxy() {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), sonyLivDevProxy(), m3uDevProxy(), tpLicenseDevProxy(), tpWvLicenseDevProxy(), tpMpdProxyDev(), tpApiDevProxy(), fifaDevProxy(), m6DevProxy(), iptvDevProxy()],
+  plugins: [react(), sonyLivDevProxy(), m3uDevProxy(), tpLicenseDevProxy(), tpWvLicenseDevProxy(), tpMpdProxyDev(), tpApiDevProxy(), fifaDevProxy(), m6DevProxy(), iptvDevProxy(), famelackDevProxy()],
   build: {
     chunkSizeWarningLimit: 1000,
   },
