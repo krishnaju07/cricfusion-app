@@ -1132,17 +1132,14 @@ export default function VideoPlayer({ channel, onLockChange, onBack }) {
       return
     }
     if (e.touches.length === 1) {
-      const t = e.touches[0]
-      // Always store start for swipe-up-to-fullscreen (works outside fullscreen)
-      gestureRef.current.swipeStartX = t.clientX
-      gestureRef.current.swipeStartY = t.clientY
       // Don't hijack swipes that belong to a scrollable overlay (settings sheet, hints)
       if (e.target?.closest?.('[data-no-gesture]')) return
       if (!liveRef.current.fullscreen) return  // brightness/volume swipe only in fullscreen
+      const t = e.touches[0]
       const rect = containerRef.current?.getBoundingClientRect()
       if (!rect) return
       const side = (t.clientX - rect.left) < rect.width / 2 ? 'left' : 'right'
-      gestureRef.current = { active: true, isSwipe: false, side, startY: t.clientY, startValue: side === 'left' ? liveRef.current.brightness : liveRef.current.volume, pinchActive: false, pinchDist: 0, startZoom: liveRef.current.zoom, swipeStartX: t.clientX, swipeStartY: t.clientY }
+      gestureRef.current = { active: true, isSwipe: false, side, startY: t.clientY, startValue: side === 'left' ? liveRef.current.brightness : liveRef.current.volume, pinchActive: false, pinchDist: 0, startZoom: liveRef.current.zoom }
     }
   }, [])
 
@@ -1177,21 +1174,12 @@ export default function VideoPlayer({ channel, onLockChange, onBack }) {
     }
   }, [update])
 
-  const handleTouchEnd = useCallback((e) => {
-    const endY = e?.changedTouches?.[0]?.clientY
-    const endX = e?.changedTouches?.[0]?.clientX
-    const { swipeStartY = 0, swipeStartX = 0 } = gestureRef.current
+  const handleTouchEnd = useCallback(() => {
     gestureRef.current.active = false
     gestureRef.current.pinchActive = false
     clearTimeout(swipeHideTimer.current)
     swipeHideTimer.current = setTimeout(() => update({ swipeIndicator: null }), 1200)
-    // Swipe up in portrait/non-fullscreen → enter fullscreen
-    if (!liveRef.current.fullscreen && !liveRef.current.locked && endY !== undefined) {
-      const dy = swipeStartY - endY           // positive = upward swipe
-      const dx = Math.abs(swipeStartX - (endX ?? swipeStartX))
-      if (dy > 80 && dy > dx * 1.5) toggleFullscreen()
-    }
-  }, [update, toggleFullscreen])
+  }, [update])
 
   // Register non-passive listeners so preventDefault actually stops page scroll
   useEffect(() => {
