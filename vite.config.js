@@ -447,16 +447,6 @@ export default defineConfig({
   plugins: [react(), sonyLivDevProxy(), m3uDevProxy(), tpLicenseDevProxy(), tpWvLicenseDevProxy(), tpMpdProxyDev(), tpApiDevProxy(), fifaDevProxy(), m6DevProxy(), iptvDevProxy()],
   build: {
     chunkSizeWarningLimit: 1000,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom'],
-          'router':       ['react-router-dom'],
-          'motion':       ['framer-motion'],
-          'state':        ['zustand'],
-        },
-      },
-    },
   },
   server: {
     proxy: {
