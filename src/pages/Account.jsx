@@ -1,15 +1,14 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Sun, Moon, RefreshCw, Tv2, Bell, BellOff, Shield, Info,
-  ChevronRight, LogOut, Heart, X, Check, Zap, List, Save,
-  Satellite, Smartphone, KeyRound,
+  RefreshCw, Bell, BellOff, Shield, Info,
+  ChevronRight, LogOut, Heart, X, Check,
+  Satellite, Smartphone, KeyRound, Trash2,
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { FEATURES } from '../config/features'
 
 const APP_VERSION = '1.0.0'
-const QUALITY_OPTIONS = ['Auto', '1080p', '720p', '480p', '360p']
 
 // ── Reusable toggle switch ────────────────────────────────────────────────────
 function Toggle({ checked }) {
@@ -139,22 +138,33 @@ function InfoRow({ label, value }) {
 // ── Main component ────────────────────────────────────────────────────────────
 export default function Account() {
   const {
-    darkMode, toggleDarkMode,
     refreshChannels, channelsLoading, channels,
     notificationsEnabled, toggleNotifications,
-    preferredQuality, setPreferredQuality,
-    m3uUrl, setM3uUrl,
     tpCreds, setTpCreds, clearTpCreds,
   } = useStore()
 
-  const [showQuality, setShowQuality]   = useState(false)
   const [showPrivacy, setShowPrivacy]   = useState(false)
   const [showVersion, setShowVersion]   = useState(false)
-  const [showPlaylist, setShowPlaylist] = useState(false)
   const [showTpLogin, setShowTpLogin]   = useState(false)
   const [notifBlocked, setNotifBlocked] = useState(false)
-  const [m3uInput, setM3uInput]         = useState(m3uUrl)
-  const [m3uSaved, setM3uSaved]         = useState(false)
+  const [cacheState, setCacheState]     = useState('idle') // 'idle' | 'clearing' | 'done'
+
+  const clearCache = async () => {
+    if (cacheState !== 'idle') return
+    setCacheState('clearing')
+    try {
+      if ('caches' in window) {
+        const keys = await caches.keys()
+        await Promise.all(keys.map((k) => caches.delete(k)))
+      }
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations()
+        await Promise.all(regs.map((r) => r.unregister()))
+      }
+    } catch {}
+    setCacheState('done')
+    setTimeout(() => window.location.reload(), 1200)
+  }
 
   // ── Tata Play OTP login state ─────────────────────────────────────────
   const [tpMobile, setTpMobile]     = useState('')
@@ -201,15 +211,7 @@ export default function Account() {
     refreshChannels()
   }
 
-  const saveM3uUrl = () => {
-    setM3uUrl(m3uInput.trim())
-    setM3uSaved(true)
-    setTimeout(() => setM3uSaved(false), 2000)
-    setTimeout(() => { setShowPlaylist(false); refreshChannels() }, 700)
-  }
-
   const tpChannelCount = channels.filter((c) => c.key?.startsWith('tp_')).length
-
   const liveCount = channels.filter((c) => c.isLive).length
 
   const handleToggleNotifications = async () => {
@@ -243,15 +245,6 @@ export default function Account() {
 
       {/* Preferences */}
       <Section title="Preferences">
-        <Row
-          icon={darkMode ? Moon : Sun}
-          label="Dark Mode"
-          toggle
-          checked={darkMode}
-          onClick={toggleDarkMode}
-          accent="lime"
-        />
-        <Divider />
         <Row
           icon={notificationsEnabled ? Bell : BellOff}
           label="Notifications"
@@ -313,19 +306,11 @@ export default function Account() {
         />
         <Divider />
         <Row
-          icon={Tv2}
-          label="Stream Quality"
-          value={preferredQuality}
-          onClick={() => setShowQuality(true)}
-          accent="purple"
-        />
-        <Divider />
-        <Row
-          icon={List}
-          label="Custom Playlist (M3U)"
-          value={m3uUrl ? 'Configured' : 'Not set'}
-          onClick={() => { setM3uInput(m3uUrl); setShowPlaylist(true) }}
-          accent="blue"
+          icon={Trash2}
+          label={cacheState === 'clearing' ? 'Clearing…' : cacheState === 'done' ? 'Cleared — reloading' : 'Clear Stream Cache'}
+          value={cacheState === 'idle' ? 'Fixes buffering' : undefined}
+          onClick={clearCache}
+          accent="red"
         />
       </Section>
 
@@ -364,30 +349,6 @@ export default function Account() {
         <span className="text-[10px] font-bold tracking-wide" style={{ color: 'rgba(200,255,0,0.5)' }}>Krishi</span>
       </div>
 
-      {/* ── Stream Quality Sheet ── */}
-      <BottomSheet open={showQuality} onClose={() => setShowQuality(false)} title="Stream Quality">
-        <div className="py-2">
-          {QUALITY_OPTIONS.map((q) => (
-            <motion.button
-              key={q}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => { setPreferredQuality(q); setShowQuality(false) }}
-              className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-white/[0.04] transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                {q === 'Auto' && <Zap size={14} className="text-brand-400" />}
-                <span className="text-white text-sm font-medium">{q}</span>
-                {q === 'Auto' && <span className="text-white/30 text-[11px]">Recommended</span>}
-              </div>
-              {preferredQuality === q && <Check size={16} className="text-brand-500" />}
-            </motion.button>
-          ))}
-          <p className="px-5 pt-2 pb-4 text-white/25 text-[11px] leading-relaxed border-t border-white/[0.05] mt-1">
-            Applied when opening a stream. The player may adjust based on network conditions.
-          </p>
-        </div>
-      </BottomSheet>
-
       {/* ── Privacy Sheet ── */}
       <BottomSheet open={showPrivacy} onClose={() => setShowPrivacy(false)} title="Privacy">
         <div className="px-5 py-2 pb-6">
@@ -401,7 +362,7 @@ export default function Account() {
           />
           <PrivacyBlock
             title="Local Storage"
-            body="Preferences such as theme, quality, and notifications are saved only to your device's local storage. This data never leaves your device."
+            body="Preferences such as theme and notifications are saved only to your device's local storage. This data never leaves your device."
           />
           <PrivacyBlock
             title="Analytics & Tracking"
@@ -459,7 +420,7 @@ export default function Account() {
                   <label className="text-white/50 text-[11px] font-semibold uppercase tracking-wider">Enter OTP</label>
                   <input
                     type="tel" maxLength={6} value={tpOtp}
-                    onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 6); setTpOtp(v); if (v.length >= 4) setTimeout(() => {}, 50) }}
+                    onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 6); setTpOtp(v) }}
                     onKeyDown={(e) => e.key === 'Enter' && tpVerifyOtp()}
                     placeholder="• • • • • •"
                     autoFocus
@@ -499,55 +460,6 @@ export default function Account() {
           </p>
         </div>
       </BottomSheet>}
-
-      {/* ── Custom Playlist Sheet ── */}
-      <BottomSheet open={showPlaylist} onClose={() => setShowPlaylist(false)} title="Custom Playlist (M3U)">
-        <div className="px-5 py-4 pb-6 space-y-4">
-          <p className="text-white/40 text-[13px] leading-relaxed">
-            Enter an M3U/M3U8 playlist URL. Supports Tata Play and any IPTV playlist with DASH or HLS streams.
-          </p>
-          <div className="space-y-1">
-            <label className="text-white/50 text-[11px] font-semibold uppercase tracking-wider">Playlist URL</label>
-            <input
-              type="url"
-              value={m3uInput}
-              onChange={(e) => setM3uInput(e.target.value)}
-              onFocus={() => setM3uSaved(false)}
-              placeholder="https://your-proxy.example.com/playlist.m3u"
-              className="w-full bg-dark-900 border border-white/[0.1] rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-brand-500/60 transition-colors"
-              autoComplete="off"
-              spellCheck={false}
-            />
-          </div>
-          {m3uUrl && (
-            <button
-              onClick={() => { setM3uInput(''); setM3uUrl(''); setTimeout(refreshChannels, 100) }}
-              className="text-red-400/60 text-xs hover:text-red-400 transition-colors"
-            >
-              Clear saved playlist
-            </button>
-          )}
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={saveM3uUrl}
-            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-semibold text-sm transition-colors"
-            style={{
-              background: m3uSaved
-                ? 'rgba(100,220,100,0.15)'
-                : 'linear-gradient(135deg, rgba(200,255,0,0.85) 0%, rgba(160,220,0,0.9) 100%)',
-              color: m3uSaved ? 'rgba(100,220,100,0.9)' : '#000',
-            }}
-          >
-            {m3uSaved
-              ? <><Check size={15} /> Saved — refresh channels to load</>
-              : <><Save size={15} /> Save Playlist</>
-            }
-          </motion.button>
-          <p className="text-white/20 text-[11px] leading-relaxed text-center">
-            Channels load under the "Tata Play" tab. Playlist is fetched fresh each session.
-          </p>
-        </div>
-      </BottomSheet>
 
       {/* ── Version Sheet ── */}
       <BottomSheet open={showVersion} onClose={() => setShowVersion(false)} title="About CricFusion">

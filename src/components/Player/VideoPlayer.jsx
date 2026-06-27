@@ -98,7 +98,7 @@ export default function VideoPlayer({ channel, onLockChange, onBack }) {
   const waitingTimer = useRef(null)   // debounces the loading spinner on brief stalls
   const clickTimer  = useRef(null)
   const liveRef     = useRef({})   // always-fresh mirror of state for closures
-  const gestureRef  = useRef({ active: false, isSwipe: false, side: null, startY: 0, startValue: 0, pinchActive: false, pinchDist: 0, startZoom: 1 })
+  const gestureRef  = useRef({ active: false, isSwipe: false, side: null, startY: 0, startValue: 0 })
   const swipeHideTimer = useRef(null)
   const speechRef          = useRef(null)   // SpeechRecognition instance
   const finalTextRef       = useRef('')     // accumulated final speech text
@@ -1121,16 +1121,11 @@ export default function VideoPlayer({ channel, onLockChange, onBack }) {
     update({ objectFit: next, zoom: 1 })
   }, [update])
 
-  // ── Swipe gesture handlers (brightness left / volume right / pinch zoom) ─
+  // ── Swipe gesture handlers (brightness left / volume right) ─────────────
   const handleTouchStart = useCallback((e) => {
     if (liveRef.current.locked) return
+    if (e.touches.length !== 1) return
     clearTimeout(swipeHideTimer.current)
-    if (e.touches.length === 2) {
-      const dx = e.touches[0].clientX - e.touches[1].clientX
-      const dy = e.touches[0].clientY - e.touches[1].clientY
-      gestureRef.current = { ...gestureRef.current, pinchActive: true, pinchDist: Math.hypot(dx, dy), startZoom: liveRef.current.zoom, active: false }
-      return
-    }
     if (e.touches.length === 1) {
       // Don't hijack swipes that belong to a scrollable overlay (settings sheet, hints)
       if (e.target?.closest?.('[data-no-gesture]')) return
@@ -1139,21 +1134,12 @@ export default function VideoPlayer({ channel, onLockChange, onBack }) {
       const rect = containerRef.current?.getBoundingClientRect()
       if (!rect) return
       const side = (t.clientX - rect.left) < rect.width / 2 ? 'left' : 'right'
-      gestureRef.current = { active: true, isSwipe: false, side, startY: t.clientY, startValue: side === 'left' ? liveRef.current.brightness : liveRef.current.volume, pinchActive: false, pinchDist: 0, startZoom: liveRef.current.zoom }
+      gestureRef.current = { active: true, isSwipe: false, side, startY: t.clientY, startValue: side === 'left' ? liveRef.current.brightness : liveRef.current.volume }
     }
   }, [])
 
   const handleTouchMove = useCallback((e) => {
     if (liveRef.current.locked) return
-    // Pinch zoom
-    if (gestureRef.current.pinchActive && e.touches.length === 2) {
-      e.preventDefault()
-      const dx = e.touches[0].clientX - e.touches[1].clientX
-      const dy = e.touches[0].clientY - e.touches[1].clientY
-      const newZoom = Math.max(1, Math.min(3, gestureRef.current.startZoom * (Math.hypot(dx, dy) / gestureRef.current.pinchDist)))
-      update({ zoom: newZoom })
-      return
-    }
     if (!gestureRef.current.active || e.touches.length !== 1) return
     const deltaY = gestureRef.current.startY - e.touches[0].clientY
     if (!gestureRef.current.isSwipe) {
@@ -1176,7 +1162,6 @@ export default function VideoPlayer({ channel, onLockChange, onBack }) {
 
   const handleTouchEnd = useCallback(() => {
     gestureRef.current.active = false
-    gestureRef.current.pinchActive = false
     clearTimeout(swipeHideTimer.current)
     swipeHideTimer.current = setTimeout(() => update({ swipeIndicator: null }), 1200)
   }, [update])
@@ -1304,7 +1289,7 @@ export default function VideoPlayer({ channel, onLockChange, onBack }) {
         className="w-full h-full"
         style={{
           objectFit: state.objectFit,
-          transform: `scale(${state.zoom}) translateZ(0)`,  // force GPU compositing layer
+          transform: 'translateZ(0)',
           filter: `brightness(${state.brightness})${state.enhance ? ' contrast(1.1) saturate(1.15)' : ''}`,
           transformOrigin: 'center',
           willChange: 'transform',      // hint browser to promote to compositor thread

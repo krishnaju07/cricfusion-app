@@ -34,7 +34,7 @@ export default function Watch() {
   const others = channels.filter((c) => c.key !== id && c.isLive)
   const sameCategory = others.filter((c) => c.category === channel?.category)
   const different   = others.filter((c) => c.category !== channel?.category)
-  const related     = [...sameCategory, ...different].slice(0, 12)
+  const related      = [...sameCategory, ...different].slice(0, 12)
   const liveChannels = [...sameCategory, ...different]
 
   // Ordered list including current channel (for swipe prev/next)
@@ -332,32 +332,6 @@ export default function Watch() {
                 >
                   See all <ChevronRight size={13} />
                 </button>
-              </div>
-
-              {/* Quick-switch horizontal strip */}
-              <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-                {liveChannels.slice(0, 30).map((ch) => (
-                  <motion.button
-                    key={ch.key}
-                    whileTap={{ scale: 0.93 }}
-                    onClick={() => navigate(`/watch/${encodeURIComponent(ch.key)}`)}
-                    className={`flex-shrink-0 flex flex-col items-center gap-1 p-2 rounded-xl border transition-all min-w-[64px] ${
-                      ch.category === channel.category
-                        ? 'bg-brand-500/10 border-brand-500/30'
-                        : 'bg-white/[0.04] border-white/[0.06] active:bg-white/10'
-                    }`}
-                  >
-                    <div className={`w-9 h-6 rounded flex items-center justify-center text-[8px] font-black ${
-                      ch.category === channel.category ? 'gradient-brand text-black' : 'bg-dark-600 text-white/70'
-                    }`}>
-                      {ch.logo}
-                    </div>
-                    <span className="text-white/55 text-[9px] font-medium truncate w-full text-center leading-tight">
-                      {ch.name.replace(/\s*\(.*?\)\s*/g, '').slice(0, 9)}
-                    </span>
-                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-                  </motion.button>
-                ))}
               </div>
 
               {/* Card grid */}
