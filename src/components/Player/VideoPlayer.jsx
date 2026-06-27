@@ -88,7 +88,7 @@ function QualityWifi({ quality, actualHeight }) {
   return <Wifi size={14} style={{ color, transition: 'color 0.4s' }} title={tip} />
 }
 
-export default function VideoPlayer({ channel }) {
+export default function VideoPlayer({ channel, onLockChange }) {
   const videoRef    = useRef(null)
   const hlsRef      = useRef(null)
   const shakaRef    = useRef(null)
@@ -166,9 +166,12 @@ export default function VideoPlayer({ channel }) {
     setState((s) => {
       const next = { ...s, ...(typeof patch === 'function' ? patch(s) : patch) }
       liveRef.current = next
+      if ('locked' in (typeof patch === 'function' ? {} : patch)) {
+        onLockChange?.(next.locked)
+      }
       return next
     })
-  }, [])
+  }, [onLockChange])
 
   // ── Chromecast init ───────────────────────────────────────────────────
   useEffect(() => {

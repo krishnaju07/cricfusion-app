@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowLeft, Users, Globe, Zap, Share2, Link2, Check,
-  Heart, ChevronRight, Radio, Star, Tv2, X, Search, ChevronLeft, ChevronRight as ChevronRightIcon
+  Heart, ChevronRight, Radio, Star, Tv2, X, Search
 } from 'lucide-react'
 import VideoPlayer from '../components/Player/VideoPlayer'
 import Sidebar from '../components/Layout/Sidebar'
@@ -25,6 +25,7 @@ export default function Watch() {
   const mainRef   = useRef(null)
   const touchStartX = useRef(null)
   const touchStartY = useRef(null)
+  const playerLockedRef = useRef(false)
 
   const channel = channels.find((c) => String(c.id) === id)
   const liked = favorites.includes(channel?.id)
@@ -111,6 +112,8 @@ export default function Watch() {
     const dy = e.changedTouches[0].clientY - touchStartY.current
     touchStartX.current = null
     touchStartY.current = null
+    // Disabled while player is locked
+    if (playerLockedRef.current) return
     // Only act on predominantly horizontal swipes
     if (Math.abs(dx) < 55 || Math.abs(dy) > Math.abs(dx) * 0.8) return
     if (dx < 0 && nextCh) navigate(`/watch/${nextCh.id}`)   // swipe left → next
@@ -163,18 +166,10 @@ export default function Watch() {
             onTouchEnd={handleTouchEnd}
             className="rounded-2xl overflow-hidden ring-1 ring-white/[0.07] shadow-2xl shadow-black/60 relative"
           >
-            <VideoPlayer channel={channel} />
-            {/* Swipe hint arrows — mobile only, fade out */}
-            {prevCh && (
-              <div className="md:hidden pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 rounded-full p-1.5">
-                <ChevronLeft size={18} className="text-white/60" />
-              </div>
-            )}
-            {nextCh && (
-              <div className="md:hidden pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 rounded-full p-1.5">
-                <ChevronRightIcon size={18} className="text-white/60" />
-              </div>
-            )}
+            <VideoPlayer
+              channel={channel}
+              onLockChange={(locked) => { playerLockedRef.current = locked }}
+            />
           </motion.div>
 
           {/* Info */}
