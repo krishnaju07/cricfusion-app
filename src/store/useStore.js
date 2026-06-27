@@ -340,8 +340,11 @@ export const useStore = create((set, get) => ({
   currentChannel: null,
   setCurrentChannel: (ch) => set({ currentChannel: ch }),
 
-  activeCategory: 'all',
-  setActiveCategory: (cat) => set({ activeCategory: cat }),
+  activeCategory: ls('cf_category', 'all'),
+  setActiveCategory: (cat) => {
+    try { localStorage.setItem('cf_category', cat) } catch {}
+    set({ activeCategory: cat })
+  },
 
   searchQuery: '',
   setSearchQuery: (q) => set({ searchQuery: q }),

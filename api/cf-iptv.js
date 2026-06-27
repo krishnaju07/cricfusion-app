@@ -29,24 +29,36 @@ function proxyStreamUrl(url) {
 // Detect from the RAW url before proxy-wrapping so patterns are always visible.
 const GEO_NITRO = { gru: 'BR', fra: 'DE' }
 
-// Name-based fallback for channels whose URL might not contain region hints.
+// Name-based fallback. Keys are normalised (no diacritics, lowercase) short
+// fragments so they match regardless of accent encoding or extra words in name.
 const NAME_VPN = {
-  'cazé tv': 'BR', 'caze tv': 'BR', 'sportv': 'BR', 'globo': 'BR',
-  'band': 'BR', 'record': 'BR',
+  'caze': 'BR', 'cazé': 'BR', 'sportv': 'BR', 'globo': 'BR',
+  'band ': 'BR', 'record': 'BR',
+}
+
+// Strip diacritics so "Cazé" and "Caze" both normalise to "caze"
+function normalize(str) {
+  return (str || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 }
 
 function detectChannelVpn(url, name) {
-  // Try URL path (raw, before proxy wrapping)
+  // 1. URL path check (raw URL, before proxy wrapping)
   try {
     const p = new URL(url).pathname
     for (const [code, country] of Object.entries(GEO_NITRO)) {
       if (p.startsWith(`/${code}-`) || p.includes(`/${code}-nitro/`)) return country
     }
   } catch { /* ignore */ }
-  // Fallback: channel name lookup
-  const key = (name || '').replace(/^⚽\s*/, '').toLowerCase()
+  // 2. Hostname check
+  try {
+    const h = new URL(url).hostname
+    if (h.includes('t-online.de')) return 'DE'
+    if (h.endsWith('.ors.at') || h.endsWith('.orf.at')) return 'AT'
+  } catch { /* ignore */ }
+  // 3. Normalised name fragment match
+  const key = normalize(name.replace(/^⚽\s*/, ''))
   for (const [fragment, country] of Object.entries(NAME_VPN)) {
-    if (key.includes(fragment)) return country
+    if (key.includes(fragment.trim())) return country
   }
   return null
 }
