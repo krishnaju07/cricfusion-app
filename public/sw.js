@@ -66,6 +66,17 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
+  // ── cxfut / lchdxfootball HLS streams (premium.js auto-refreshed) ────────
+  if (url.pathname === '/cf-cxfut') {
+    event.respondWith(
+      fetch('/api/cf-cxfut', { cache: 'no-store', credentials: 'omit' })
+        .then((r) => r.text())
+        .then(makeResponse)
+        .catch(() => new Response('error', { status: 502 }))
+    )
+    return
+  }
+
   // ── iptv-eldbert FIFA/World Cup channels (always-fresh tokenized HLS) ────
   if (url.pathname === '/cf-iptv') {
     event.respondWith(
