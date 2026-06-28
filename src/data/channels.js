@@ -84,27 +84,53 @@ export function mapApiChannel(key, apiData, id) {
   }
 }
 
-// ── Dynamic per-channel API (newwwwapiiiiii.vercel.app/main?id=...) ──────────
+// ── Dynamic per-channel API (japiweb.vercel.app/api/main?id=... for s1-s5,
+//    newwwwapiiiiii.vercel.app/main?id=... for others) ────────────────────────
 // Each entry is fetched individually; SW proxies via /cf-dynamic?id=...
 // Response shape: { id, name, Bearer, url, k1, k2 }
 
-export const DYNAMIC_CHANNEL_IDS = ['willow', 'skynz1uhd', 'e1s4']
+export const DYNAMIC_CHANNEL_IDS = ['willow', 'skynz1uhd', 'e1s4', 's1', 's2', 's3', 's4', 's5']
 
 const DYNAMIC_META = {
   willow: {
     name: 'Willow TV',       logo: 'WLW',  category: 'cricket',
     language: 'English', badge: 'HD',  viewers: '750K',
-    thumbnail: T('1508098682722-e99c43a406b2'),    // cricket match
+    thumbnail: T('1508098682722-e99c43a406b2'),
   },
   skynz1uhd: {
     name: 'Sky Sport 1 UHD', logo: 'SKY1', category: 'cricket',
     language: 'English', badge: '4K',  viewers: '420K',
-    thumbnail: T('1574629810360-7efbbe195018'),    // NZ/sky sports feel
+    thumbnail: T('1574629810360-7efbbe195018'),
   },
   e1s4: {
     name: null,              logo: 'E1S4', category: 'multi',
     language: 'English', badge: 'HD',  viewers: '350K',
-    thumbnail: T('1461896836934-ffe607ba8211'),    // multi-sport stadium
+    thumbnail: T('1461896836934-ffe607ba8211'),
+  },
+  s1: {
+    name: 'Sony Ten 1',      logo: 'ST1',  category: 'cricket',
+    language: 'English', badge: 'HD',  viewers: '1.6M',
+    thumbnail: T('1531415074968-036ba1b575da'),
+  },
+  s2: {
+    name: 'Sony Ten 2',      logo: 'ST2',  category: 'cricket',
+    language: 'English', badge: 'HD',  viewers: '980K',
+    thumbnail: T('1461896836934-ffe607ba8211'),
+  },
+  s3: {
+    name: 'Sony Ten 3 Hindi', logo: 'ST3', category: 'cricket',
+    language: 'Hindi',   badge: 'HD',  viewers: '750K',
+    thumbnail: T('1546519638405-a9f1e9a4f7c5'),
+  },
+  s4: {
+    name: 'Sony Ten 4',      logo: 'ST4',  category: 'cricket',
+    language: 'English', badge: 'HD',  viewers: '600K',
+    thumbnail: T('1531415074968-036ba1b575da'),
+  },
+  s5: {
+    name: 'Sony Ten 5',      logo: 'ST5',  category: 'cricket',
+    language: 'English', badge: 'HD',  viewers: '620K',
+    thumbnail: T('1568605117036-5fe5e7bab0b7'),
   },
 }
 
@@ -417,6 +443,42 @@ export const STATIC_CHANNELS = [
     score: null,
     url: 'https://falcon-en-conn.zee5.com/hls/live/2125523/POR-vs-UZB-23-con_ENG/index-connected.m3u8?hdnts=st=1782234924~exp=1782249324~acl=/hls/live/2125523/POR-vs-UZB-23-con_ENG/index-connected.m3u8*~id=0-1-6z5974844_B3A3B898-6E6D-4398-B06D-57183B24F343~hmac=f5cd539141708babf790a80bf02d409f082e8a44164c041b36b257c223777792&req_id=cf2f832b-bd46-46dc-b208-1c1da2f4e621',
     clearKey: null,
+    quality: ['Auto', '1080p', '720p', '480p'],
+  },
+  {
+    id: 152,
+    key: 'StarSportsHD1',
+    name: 'Star Sports HD1',
+    category: 'cricket',
+    currentMatch: 'Star Sports HD1 — Live',
+    thumbnail: T('1540747913346-19212a4b423f'),
+    logo: 'SS1',
+    isLive: true,
+    viewers: '2.4M',
+    badge: 'HD',
+    language: 'English',
+    description: 'Star Sports HD1 — Live Cricket',
+    score: null,
+    url: 'https://jiotvpllive.cdn.jio.com/bpk-tv/Star_Sports_HD1_BTS/WDVLive/index.mpd?__hdnea__=st=1782617440~exp=1782639040~acl=/bpk-tv/Star_Sports_HD1_BTS/WDVLive/*~hmac=572a2de927ed6a02f5b0e8a4d5d44f2b5be93b78030a16377aabd47f5ff20a05',
+    clearKey: { keyId: '965dc2ddb1d85138ad787999a7f30ca5', key: '859695076e67fe961836b564db6d689c' },
+    quality: ['Auto', '1080p', '720p', '480p'],
+  },
+  {
+    id: 153,
+    key: 'StarSportsHD2',
+    name: 'Star Sports HD2',
+    category: 'cricket',
+    currentMatch: 'Star Sports HD2 — Live',
+    thumbnail: T('1624555130581-1d9cca783bc0'),
+    logo: 'SS2',
+    isLive: true,
+    viewers: '1.8M',
+    badge: 'HD',
+    language: 'English',
+    description: 'Star Sports HD2 — Live Cricket',
+    score: null,
+    url: 'https://jiotvpllive.cdn.jio.com/bpk-tv/Star_Sports_HD2_BTS/WDVLive/index.mpd?__hdnea__=st=1782617441~exp=1782639041~acl=/bpk-tv/Star_Sports_HD2_BTS/WDVLive/*~hmac=5d7a899064da1ee96389de5f80bdc21aadac5ad5251d9c552bbd6edc26a24a2f',
+    clearKey: { keyId: '9457eb90129456fa8ea95e10ba4ac51e', key: 'e620a970cea474c491ac78ae71a4d764' },
     quality: ['Auto', '1080p', '720p', '480p'],
   },
   {

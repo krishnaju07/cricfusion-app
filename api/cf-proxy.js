@@ -9,7 +9,6 @@ const ALLOWED = [
 ]
 
 const UPSTREAMS = {
-  data:    'https://jtvv.pages.dev/channels.json',
   fancode: 'https://raw.githubusercontent.com/drmlive/fancode-live-events/main/fancode.json',
   sonyliv: 'https://raw.githubusercontent.com/drmlive/sliv-live-events/main/sonyliv.json',
 }

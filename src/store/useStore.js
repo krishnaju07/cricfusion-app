@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import {
-  CHANNEL_ORDER, STATIC_CHANNELS, mapApiChannel,
+  STATIC_CHANNELS,
   DYNAMIC_CHANNEL_IDS, mapDynamicChannel, mapFanCodeChannel, mapSonyLivChannel,
   mapFifaChannel, mapStarSonyChannel,
 } from '../data/channels'
@@ -22,8 +22,7 @@ function routeGeoChannel(ch) {
   return ch
 }
 
-const PROXY         = '/cf-data'      // SW → jtvv.pages.dev/channels.json
-const DYNAMIC_PROXY = '/cf-dynamic'   // SW → newwwwapiiiiii.vercel.app/main?id=...
+const DYNAMIC_PROXY = '/cf-dynamic'   // SW → japiweb.vercel.app/api/main?id=... (s1-s5) or newwwwapiiiiii
 const FANCODE_PROXY = '/cf-fancode'   // SW → github drmlive/fancode-live-events
 const SONYLIV_PROXY = '/cf-sonyliv'   // SW → github drmlive/sliv-live-events
 const FIFA_PROXY    = '/cf-fifa'      // SW → /api/cf-fifa (server-side, Referer-locked)
@@ -139,19 +138,16 @@ export const useStore = create((set, get) => ({
     // (clients.claim() propagates async). Fall back to direct URLs so channels
     // always load; SW proxy kicks in on second+ page load.
     const swActive  = !!(navigator.serviceWorker?.controller)
-    const batchUrl  = swActive ? PROXY : 'https://jtvv.pages.dev/channels.json'
     const fanCodeUrl = swActive ? FANCODE_PROXY : 'https://raw.githubusercontent.com/drmlive/fancode-live-events/main/fancode.json'
     const sonyLivUrl = swActive ? SONYLIV_PROXY : 'https://raw.githubusercontent.com/drmlive/sliv-live-events/main/sonyliv.json'
-    const fifaUrl   = FIFA_PROXY  // always via SW or direct — no public fallback (Referer-locked)
     const dynUrl    = (id) => swActive
       ? `${DYNAMIC_PROXY}?id=${id}`
-      : `https://newwwwapiiiiii.vercel.app/main?id=${id}`
+      : `https://japiweb.vercel.app/api/main?id=${id}`
 
     // Per-source channel buckets. Each API writes its slice here as it
     // resolves; commit() re-merges in a stable order so a slow endpoint never
     // blocks the others from rendering.
     const sources = {
-      api:      [],
       dynamic:  [],
       fifa:     [],
       fancode:  [],
@@ -163,7 +159,7 @@ export const useStore = create((set, get) => ({
       tamil:    [],
     }
     // Fixed render order — independent of which fetch finishes first.
-    const ORDER = ['api', 'dynamic', 'fifa', 'fancode', 'sonyliv', 'starsony', 'tp', 'm3u', 'sports', 'tamil']
+    const ORDER = ['dynamic', 'fifa', 'fancode', 'sonyliv', 'starsony', 'tp', 'm3u', 'sports', 'tamil']
 
     const commit = (extra = {}) => {
       const allChannels = [
@@ -185,22 +181,6 @@ export const useStore = create((set, get) => ({
     // appear as soon as their own API responds — the slowest one no longer
     // holds back the rest.
     const tasks = []
-
-    // ── Batch channels (jtvv) ──────────────────────────────────────────
-    tasks.push(
-      fetch(batchUrl).then((r) => r.text()).then((text) => {
-        const json = decode(text, swActive)
-        if (!json) return
-        const ordered = [
-          ...CHANNEL_ORDER,
-          ...Object.keys(json).filter((k) => !CHANNEL_ORDER.includes(k)),
-        ]
-        sources.api = ordered
-          .filter((key) => json[key])
-          .map((key, i) => mapApiChannel(key, json[key], i + 1))
-        commit()
-      }).catch((e) => console.warn('Batch channels load failed:', e))
-    )
 
     // ── FanCode live events ────────────────────────────────────────────
     tasks.push(

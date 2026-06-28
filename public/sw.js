@@ -22,17 +22,6 @@ self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()))
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url)
 
-  // ── Batch channel list ────────────────────────────────────────────────────
-  if (url.pathname === '/cf-data') {
-    event.respondWith(
-      fetch('/api/cf-proxy?src=data', { cache: 'no-store', credentials: 'same-origin' })
-        .then((r) => r.text())
-        .then(makeResponse)
-        .catch(() => new Response('error', { status: 502 }))
-    )
-    return
-  }
-
   // ── FanCode live events ───────────────────────────────────────────────────
   if (url.pathname === '/cf-fancode') {
     event.respondWith(
