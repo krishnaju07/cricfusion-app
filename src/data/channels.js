@@ -89,18 +89,13 @@ export function mapApiChannel(key, apiData, id) {
 // Each entry is fetched individually; SW proxies via /cf-dynamic?id=...
 // Response shape: { id, name, Bearer, url, k1, k2 }
 
-export const DYNAMIC_CHANNEL_IDS = ['willow', 'skynz1uhd', 'e1s4', 's1', 's2', 's3', 's4', 's5']
+export const DYNAMIC_CHANNEL_IDS = ['willow', 'e1s4', 's1', 's2', 's3', 's4', 's5']
 
 const DYNAMIC_META = {
   willow: {
     name: 'Willow TV',       logo: 'WLW',  category: 'cricket',
     language: 'English', badge: 'HD',  viewers: '750K',
     thumbnail: T('1508098682722-e99c43a406b2'),
-  },
-  skynz1uhd: {
-    name: 'Sky Sport 1 UHD', logo: 'SKY1', category: 'cricket',
-    language: 'English', badge: '4K',  viewers: '420K',
-    thumbnail: T('1574629810360-7efbbe195018'),
   },
   e1s4: {
     name: null,              logo: 'E1S4', category: 'multi',
@@ -388,45 +383,6 @@ export function mapFifaChannel(s) {
 }
 
 export const STATIC_CHANNELS = [
-  {
-    id: 101,
-    key: 'willowios',
-    name: 'Willow Sports',
-    category: 'cricket',
-    currentMatch: 'Willow Sports — Live',
-    thumbnail: T('1568605117036-5fe5e7bab0b7'),
-    logo: 'WLW',
-    isLive: true,
-    viewers: '890K',
-    badge: 'HD',
-    language: 'English',
-    description: 'Willow Sports — Live cricket from the USA',
-    score: null,
-    url: 'https://amg01269-amg01269c1-sportstribal-emea-5204.playouts.now.amagi.tv/playlist/amg01269-willowtvfast-willowplus-sportstribalemea/playlist.m3u8',
-    clearKey: null,
-    quality: ['Auto', '1080p', '720p', '480p', '360p'],
-  },
-  {
-    id: 102,
-    key: 'WillowCricbuzz',
-    name: 'Willow Cricbuzz TV',
-    category: 'cricket',
-    currentMatch: 'Willow Cricbuzz TV — Live',
-    thumbnail: T('1546519638405-a9f1e9a4f7c5'),
-    logo: 'WLW',
-    isLive: true,
-    viewers: '1.1M',
-    badge: 'HD',
-    language: 'English',
-    description: 'Willow Cricbuzz TV — Live Cricket',
-    score: null,
-    url: 'https://a57live-pv-ta-amazon.akamaized.net/iad-nitro/live/clients/dash/enc/ty2hlbyyk3/out/v1/0e4990351b97426db382b30cb01cf645/cenc.mpd',
-    clearKey: {
-      keyId: '8094deb4bf11428aa0d663b3168bc69d',
-      key:   'da904540e06da7a77270d63422cb0f69',
-    },
-    quality: ['Auto', '1080p', '720p', '480p'],
-  },
 {
     id: 143,
     key: 'zee5cricket',
