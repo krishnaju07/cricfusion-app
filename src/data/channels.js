@@ -131,34 +131,35 @@ const DYNAMIC_META = {
 
 // Convert one per-channel API response → our channel shape.
 // id = numeric id to assign (201, 202, …)
-export function mapDynamicChannel(apiData, id) {
-  const meta = DYNAMIC_META[apiData.id] ?? {}
+export function mapDynamicChannel(apiData, id, channelId) {
+  const key  = apiData.id ?? channelId
+  const meta = DYNAMIC_META[key] ?? {}
   const name = meta.name ?? apiData.name
   return {
     id,
-    key:          apiData.id,
+    key,
     name,
     category:     meta.category    ?? 'multi',
     currentMatch: `${name} — Live`,
     thumbnail:    meta.thumbnail   ?? T('1540747913346-19212a4b423f'),
-    logo:         meta.logo        ?? apiData.id.slice(0, 4).toUpperCase(),
+    logo:         meta.logo        ?? (key ?? 'CH').slice(0, 4).toUpperCase(),
     isLive:       true,
     viewers:      meta.viewers     ?? '500K',
     badge:        meta.badge       ?? 'HD',
     language:     meta.language    ?? 'English',
     description:  `${name} — Live sports`,
     score:        null,
-    url:          apiData.url,
+    url:          apiData.url || apiData.streamUrl,
     clearKey:     apiData.k1 && apiData.k2
                     ? { keyId: apiData.k1, key: apiData.k2 }
-                    : null,
+                    : apiData.clearKey ?? null,
     quality:      ['Auto', '1080p', '720p', '480p'],
   }
 }
 
 // ── FanCode live events (drmlive/fancode-live-events) ────────────────────────
 const FC_CATEGORY = {
-  Cricket:     'cricket',
+  Cricket:     'fancode',
   Football:    'football',
   Tennis:      'tennis',
   Basketball:  'basketball',
@@ -205,7 +206,7 @@ export function mapFanCodeChannel(match) {
 
 // ── Sony LIV live events (drmlive/sliv-live-events) ─────────────────────────
 const SL_CATEGORY = {
-  Cricket:       'cricket',
+  Cricket:       'sonyliv',
   Football:      'football',
   Tennis:        'tennis',
   Basketball:    'basketball',

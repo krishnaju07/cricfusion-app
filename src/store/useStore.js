@@ -245,8 +245,8 @@ export const useStore = create((set, get) => ({
       tasks.push(
         fetch(dynUrl(id)).then((r) => r.text()).then((text) => {
           const data = decode(text, swActive)
-          if (!data || !data.url) return
-          sources.dynamic[i] = mapDynamicChannel(data, 200 + i + 1)
+          if (!data || (!data.url && !data.streamUrl)) return
+          sources.dynamic[i] = mapDynamicChannel(data, 200 + i + 1, id)
           // strip empty slots from channels that failed/not-yet-arrived
           commit()
         }).catch((e) => console.warn('Dynamic channel load failed:', e))
