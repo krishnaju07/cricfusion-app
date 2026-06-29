@@ -77,6 +77,17 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
+  // ── footballapi-delta.vercel.app — all FIFA streams (Origin-gated) ──────
+  if (url.pathname === '/cf-footballapi') {
+    event.respondWith(
+      fetch('/api/cf-footballapi', { cache: 'no-store', credentials: 'omit' })
+        .then((r) => r.text())
+        .then(makeResponse)
+        .catch(() => new Response('error', { status: 502 }))
+    )
+    return
+  }
+
   // ── footsters-live / footsters-tv redirect-resolved HLS streams ─────────
   if (url.pathname === '/cf-footsters') {
     event.respondWith(

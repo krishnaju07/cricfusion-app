@@ -29,6 +29,7 @@ const FIFA_PROXY    = '/cf-fifa'      // SW → /api/cf-fifa (server-side, Refer
 const IPTV_PROXY    = '/cf-iptv'      // SW → /api/cf-iptv (iptv-eldbert FIFA channels)
 const CXFUT_PROXY       = '/cf-cxfut'       // SW → /api/cf-cxfut (lchdxfootball premium.js HLS)
 const FOOTSTERS_PROXY   = '/cf-footsters'   // SW → /api/cf-footsters (footsters-live + footsters-tv redirect-resolved HLS)
+const FOOTBALLAPI_PROXY = '/cf-footballapi' // SW → /api/cf-footballapi (footballapi-delta — all FIFA streams, Origin-gated)
 // Star/Sony Sports: Jio CDN DASH + ClearKey + short-lived token. CORS-open, so
 // fetched directly (no SW proxy needed).
 const STARSONY_URL  = 'https://sayan-json-4.pages.dev/Data/sports.json'
@@ -149,6 +150,7 @@ export const useStore = create((set, get) => ({
     // resolves; commit() re-merges in a stable order so a slow endpoint never
     // blocks the others from rendering.
     const sources = {
+      wc2026:   [],
       dynamic:  [],
       fifa:     [],
       fancode:  [],
@@ -160,7 +162,7 @@ export const useStore = create((set, get) => ({
       tamil:    [],
     }
     // Fixed render order — independent of which fetch finishes first.
-    const ORDER = ['dynamic', 'fifa', 'fancode', 'sonyliv', 'starsony', 'tp', 'm3u', 'sports', 'tamil']
+    const ORDER = ['wc2026', 'dynamic', 'fifa', 'fancode', 'sonyliv', 'starsony', 'tp', 'm3u', 'sports', 'tamil']
 
     const commit = (extra = {}) => {
       const allChannels = [
@@ -205,7 +207,16 @@ export const useStore = create((set, get) => ({
       }).catch((e) => console.warn('Sony LIV load failed:', e))
     )
 
-    // ── FIFA 2026 + iptv-eldbert + cxfut + footsters HLS streams ────────
+    // ── WC 2026 Live — footballapi-delta (own section) ───────────────────
+    tasks.push(
+      fetch(FOOTBALLAPI_PROXY).then((r) => r.text()).then((text) => {
+        const json = decode(text, swActive)
+        sources.wc2026 = (Array.isArray(json) ? json : []).map(mapFifaChannel)
+        commit()
+      }).catch((e) => console.warn('Football API load failed:', e))
+    )
+
+    // ── FIFA 2026 + iptv-eldbert + cxfut + footsters streams ─────────────
     // Four endpoints feed the same bucket; merge whichever arrives first.
     let fifaPart = [], iptvPart = [], cxfutPart = [], footstersPart = []
     const commitFifa = () => { sources.fifa = [...fifaPart, ...cxfutPart, ...footstersPart, ...iptvPart]; commit() }

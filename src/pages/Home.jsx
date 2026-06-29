@@ -23,6 +23,7 @@ const QUALITY_FILTERS = [
 ]
 
 const TRENDING_SECTIONS = [
+  { id: 'wc2026live', label: 'WC 2026 Live',        icon: '⚽' },
   { id: 'fifa2026',   label: 'FIFA World Cup 2026', icon: '🏆' },
   { id: 'cricket',    label: 'Cricket',             icon: '🏏' },
   { id: 'football',   label: 'Football',            icon: '⚽' },

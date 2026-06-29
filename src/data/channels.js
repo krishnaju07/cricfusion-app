@@ -362,7 +362,7 @@ export function mapFifaChannel(s) {
     id:           s.id,
     key:          s.key,
     name:         s.name,
-    category:     'fifa2026',
+    category:     s.category || 'fifa2026',
     currentMatch: s.match,
     thumbnail:    T('1574629810360-7efbbe195018'),
     logo:         s.logo,
@@ -863,6 +863,7 @@ export const FIFA_SORT_WEIGHT = { hq: 0, ok: 1, down: 2 }
 
 export const categories = [
   { id: 'all',         label: 'Trending',     icon: '🔥' },
+  { id: 'wc2026live',  label: 'WC 2026 Live', icon: '⚽' },
   { id: 'fifa2026',    label: 'FIFA 2026',    icon: '🏆' },
   { id: 'fancode',     label: 'FanCode',      icon: '⚡' },
   { id: 'starsony',    label: 'Star / Sony',  icon: '⭐' },
