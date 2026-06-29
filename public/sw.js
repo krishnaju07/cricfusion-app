@@ -77,6 +77,17 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
+  // ── footsters-live / footsters-tv redirect-resolved HLS streams ─────────
+  if (url.pathname === '/cf-footsters') {
+    event.respondWith(
+      fetch('/api/cf-footsters', { cache: 'no-store', credentials: 'omit' })
+        .then((r) => r.text())
+        .then(makeResponse)
+        .catch(() => new Response('error', { status: 502 }))
+    )
+    return
+  }
+
   // ── Per-channel dynamic fetch ─────────────────────────────────────────────
   if (url.pathname === '/cf-dynamic') {
     const id = url.searchParams.get('id')

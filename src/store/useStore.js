@@ -27,7 +27,8 @@ const FANCODE_PROXY = '/cf-fancode'   // SW → github drmlive/fancode-live-even
 const SONYLIV_PROXY = '/cf-sonyliv'   // SW → github drmlive/sliv-live-events
 const FIFA_PROXY    = '/cf-fifa'      // SW → /api/cf-fifa (server-side, Referer-locked)
 const IPTV_PROXY    = '/cf-iptv'      // SW → /api/cf-iptv (iptv-eldbert FIFA channels)
-const CXFUT_PROXY   = '/cf-cxfut'    // SW → /api/cf-cxfut (lchdxfootball premium.js HLS)
+const CXFUT_PROXY       = '/cf-cxfut'       // SW → /api/cf-cxfut (lchdxfootball premium.js HLS)
+const FOOTSTERS_PROXY   = '/cf-footsters'   // SW → /api/cf-footsters (footsters-live + footsters-tv redirect-resolved HLS)
 // Star/Sony Sports: Jio CDN DASH + ClearKey + short-lived token. CORS-open, so
 // fetched directly (no SW proxy needed).
 const STARSONY_URL  = 'https://sayan-json-4.pages.dev/Data/sports.json'
@@ -204,10 +205,10 @@ export const useStore = create((set, get) => ({
       }).catch((e) => console.warn('Sony LIV load failed:', e))
     )
 
-    // ── FIFA 2026 + iptv-eldbert + cxfut HLS streams ─────────────────
-    // Three endpoints feed the same bucket; merge whichever arrives first.
-    let fifaPart = [], iptvPart = [], cxfutPart = []
-    const commitFifa = () => { sources.fifa = [...fifaPart, ...cxfutPart, ...iptvPart]; commit() }
+    // ── FIFA 2026 + iptv-eldbert + cxfut + footsters HLS streams ────────
+    // Four endpoints feed the same bucket; merge whichever arrives first.
+    let fifaPart = [], iptvPart = [], cxfutPart = [], footstersPart = []
+    const commitFifa = () => { sources.fifa = [...fifaPart, ...cxfutPart, ...footstersPart, ...iptvPart]; commit() }
     tasks.push(
       fetch(FIFA_PROXY).then((r) => r.text()).then((text) => {
         const json = decode(text, swActive)
@@ -228,6 +229,13 @@ export const useStore = create((set, get) => ({
         iptvPart = (Array.isArray(json) ? json : []).map(mapFifaChannel)
         commitFifa()
       }).catch((e) => console.warn('IPTV FIFA load failed:', e))
+    )
+    tasks.push(
+      fetch(FOOTSTERS_PROXY).then((r) => r.text()).then((text) => {
+        const json = decode(text, swActive)
+        footstersPart = (Array.isArray(json) ? json : []).map(mapFifaChannel)
+        commitFifa()
+      }).catch((e) => console.warn('Footsters load failed:', e))
     )
 
     // ── Star / Sony Sports (sayan-json-4) ──────────────────────────────
