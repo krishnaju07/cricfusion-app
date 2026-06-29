@@ -443,42 +443,6 @@ function famelackDevProxy() {
   }
 }
 
-// Dev-time proxy for /cf-stream/(.*) — mirrors the Vercel path-based route locally
-function streamDevProxy() {
-  return {
-    name: 'cf-stream-dev-proxy',
-    configureServer(server) {
-      server.middlewares.use(async (req, res, next) => {
-        if (!req.url?.startsWith('/cf-stream/')) return next()
-        res.setHeader('Access-Control-Allow-Origin', '*')
-        if (req.method === 'OPTIONS') { res.statusCode = 204; return res.end() }
-        try {
-          const handlerUrl = pathToFileURL(nodePath.join(process.cwd(), 'api', 'cf-stream.js')).href + `?t=${Date.now()}`
-          const mod = await import(handlerUrl)
-          const path = req.url.slice('/cf-stream/'.length).split('?')[0]
-          const fakeReq = {
-            method: req.method,
-            query: { path },
-            headers: { referer: 'http://localhost:5173', ...req.headers },
-          }
-          const fakeRes = {
-            _status: 200,
-            status(c) { this._status = c; return this },
-            end(b)  { res.statusCode = this._status; res.end(b) },
-            send(b) { res.statusCode = this._status; res.end(b) },
-            json(b) { res.setHeader('Content-Type', 'application/json'); res.statusCode = this._status; res.end(JSON.stringify(b)) },
-            setHeader(k, v) { res.setHeader(k, v) },
-          }
-          await mod.default(fakeReq, fakeRes)
-        } catch (e) {
-          console.error('[cf-stream-dev]', e)
-          res.statusCode = 502; res.end('stream proxy error: ' + e.message)
-        }
-      })
-    },
-  }
-}
-
 // Dev-time proxy for /api/cf-footballapi — runs the Vercel handler locally
 function footballapiDevProxy() {
   return {
