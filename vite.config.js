@@ -505,7 +505,7 @@ function iptvDevProxy() {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), sonyLivDevProxy(), m3uDevProxy(), tpLicenseDevProxy(), tpWvLicenseDevProxy(), tpMpdProxyDev(), tpApiDevProxy(), fifaDevProxy(), m6DevProxy(), iptvDevProxy(), famelackDevProxy(), footballapiDevProxy(), streamDevProxy()],
+  plugins: [react(), sonyLivDevProxy(), m3uDevProxy(), tpLicenseDevProxy(), tpWvLicenseDevProxy(), tpMpdProxyDev(), tpApiDevProxy(), fifaDevProxy(), m6DevProxy(), iptvDevProxy(), famelackDevProxy(), footballapiDevProxy()],
   build: {
     chunkSizeWarningLimit: 1000,
   },
