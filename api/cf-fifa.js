@@ -63,6 +63,32 @@ const FOOTAPI_SKIP = new Set([
 // CT Sport is from the antik.sk IPTV service (not in footapi at all).
 const PRIORITY_STREAMS = [
   {
+    id: 329,
+    key: 'fifa_fox_bom',
+    name: 'Fox HD',
+    match: 'Fox HD',
+    logo: 'FOX',
+    language: 'English',
+    badge: 'HD',
+    description: 'Fox HD — FIFA World Cup 2026',
+    url: 'https://otte.cache.aiv-cdn.net/bom-nitro/live/clients/enc/ajfoeddkbz/out/v1/b78800b9b2304879b15843f455836829/cenc.mpd',
+    keyId:  'f6564ec2aee819046328a0e153be574d',
+    drmKey: 'ff46a8a1031eb27ef22576a077c98ab7',
+  },
+  {
+    id: 330,
+    key: 'fifa_hd2_lhr',
+    name: 'FIFA HD 2',
+    match: 'FIFA HD 2',
+    logo: 'FIFA',
+    language: 'English',
+    badge: 'HD',
+    description: 'FIFA HD 2 — FIFA World Cup 2026',
+    url: 'https://otte.live.fly.ww.aiv-cdn.net/lhr-nitro/live/clients/dash/enc/3ynrpdanq2/out/v1/81fd4c26584044d2b1a1cc5b32fa9af0/cenc.mpd',
+    keyId:  null,
+    drmKey: null,
+  },
+  {
     id: 327,
     key: 'fifa_itv1_eng',
     name: 'ITV 1',
