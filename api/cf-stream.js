@@ -75,16 +75,28 @@ export default async function handler(req, res) {
     res.setHeader('Content-Length', r.headers.get('content-length'))
   }
 
-  // MPD manifest: rewrite absolute CDN URLs so Shaka routes them back through this proxy
+  // MPD manifest: resolve relative BaseURL / segment paths to absolute CDN URLs so
+  // Shaka fetches segments directly from the CDN (no Vercel bandwidth, no datacenter 400s).
+  // Only the manifest needs the proxy — CDNs typically check Origin/UA only on the manifest.
   if (upstream.endsWith('.mpd') || (r.headers.get('content-type') || '').includes('dash+xml')) {
     let text = await r.text()
-    for (const h of ALLOWED_HOSTS) {
-      text = text.replaceAll(`https://${h}/`, `/cf-stream/${h}/`)
+    const cdnBase = upstream.replace(/\/[^/]+\.mpd.*$/, '/')
+
+    // Resolve existing <BaseURL> elements to absolute CDN paths
+    text = text.replace(/<BaseURL>([^<]+)<\/BaseURL>/g, (_, url) => {
+      if (/^https?:\/\//.test(url)) return `<BaseURL>${url}</BaseURL>`
+      try { return `<BaseURL>${new URL(url, upstream).href}</BaseURL>` } catch { return _ }
+    })
+
+    // If no BaseURL present, inject one so relative segment paths resolve to CDN directly
+    if (!/<BaseURL>/i.test(text)) {
+      text = text.replace(/<(Period\b)/, `<BaseURL>${cdnBase}</BaseURL>\n  <$1`)
     }
+
     return res.status(r.status).send(text)
   }
 
-  // Segments / init: pipe binary directly
+  // Segments / init: pipe binary directly (reached only if Shaka resolves back here)
   const buf = Buffer.from(await r.arrayBuffer())
   return res.status(r.status).send(buf)
 }
