@@ -443,6 +443,36 @@ function famelackDevProxy() {
   }
 }
 
+// Dev-time proxy for /api/cf-footballapi — runs the Vercel handler locally
+function footballapiDevProxy() {
+  return {
+    name: 'footballapi-dev-proxy',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        if (!req.url?.startsWith('/api/cf-footballapi')) return next()
+        res.setHeader('Access-Control-Allow-Origin', '*')
+        if (req.method === 'OPTIONS') { res.statusCode = 204; return res.end() }
+        try {
+          const handlerUrl = pathToFileURL(nodePath.join(process.cwd(), 'api', 'cf-footballapi.js')).href + `?t=${Date.now()}`
+          const mod = await import(handlerUrl)
+          const fakeReq = { method: req.method, headers: { referer: 'http://localhost:5173' } }
+          const fakeRes = {
+            _status: 200,
+            status(c) { this._status = c; return this },
+            end(b) { res.statusCode = this._status; res.end(b) },
+            json(b) { res.setHeader('Content-Type', 'application/json'); res.statusCode = this._status; res.end(JSON.stringify(b)) },
+            setHeader(k, v) { res.setHeader(k, v) },
+          }
+          await mod.default(fakeReq, fakeRes)
+        } catch (e) {
+          console.error('[footballapi-dev]', e)
+          res.statusCode = 500; res.end('dev error: ' + e.message)
+        }
+      })
+    },
+  }
+}
+
 // Dev-time proxy for /api/cf-iptv — runs the Vercel handler locally
 function iptvDevProxy() {
   return {
@@ -475,7 +505,7 @@ function iptvDevProxy() {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), sonyLivDevProxy(), m3uDevProxy(), tpLicenseDevProxy(), tpWvLicenseDevProxy(), tpMpdProxyDev(), tpApiDevProxy(), fifaDevProxy(), m6DevProxy(), iptvDevProxy(), famelackDevProxy()],
+  plugins: [react(), sonyLivDevProxy(), m3uDevProxy(), tpLicenseDevProxy(), tpWvLicenseDevProxy(), tpMpdProxyDev(), tpApiDevProxy(), fifaDevProxy(), m6DevProxy(), iptvDevProxy(), famelackDevProxy(), footballapiDevProxy()],
   build: {
     chunkSizeWarningLimit: 1000,
   },
