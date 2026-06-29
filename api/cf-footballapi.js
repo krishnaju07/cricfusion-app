@@ -11,25 +11,6 @@ const ALLOWED = [
 const API_URL    = 'https://footballapi-delta.vercel.app/api/op'
 const API_ORIGIN = 'https://footsters-tv.pages.dev'
 
-// CDN hosts routed through /cf-stream to inject correct Origin header in production
-const PROXY_HOSTS = new Set([
-  'otte.cache.aiv-cdn.net',
-  'otte.live.fly.ww.aiv-cdn.net',
-  'live-pv-ta.amazon.fastly-edge.com',
-  'abgh3fbaaaaaaaambylpff72g6up6.ta.bia-cf.live.pv-cdn.net',
-  'a151aivottlinear-a.akamaihd.net',
-])
-
-function proxyStreamUrl(url) {
-  try {
-    const u = new URL(url)
-    if (PROXY_HOSTS.has(u.hostname)) {
-      return `/cf-stream/${u.hostname}${u.pathname}${u.search}`
-    }
-  } catch {}
-  return url
-}
-
 // Logo mapping keyed on lowercase fragments of channel_title
 const LOGO_MAP = [
   ['fox sports',  'FOX' ],
@@ -170,7 +151,7 @@ export default async function handler(req, res) {
       language:    detect(title, LANG_MAP, 'English'),
       description: `${title} — ${s.event_name}`,
       vpn:         detect(title, VPN_MAP, null),
-      url:         proxyStreamUrl(s.stream_url),
+      url:         s.stream_url,
       keyId:       s.keyid  || null,
       drmKey:      s.key    || null,
     }
