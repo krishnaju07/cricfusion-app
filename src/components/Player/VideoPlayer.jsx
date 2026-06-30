@@ -1335,6 +1335,10 @@ export default function VideoPlayer({ channel, onLockChange, onBack }) {
                     Watch on Sony LIV
                   </a>
                 </div>
+              ) : channel?.category === 'playlist' ? (
+                <p className="text-white/40 text-sm">
+                  Stream may not be live right now, or requires a DRMLive subscription.
+                </p>
               ) : (
                 <p className="text-white/40 text-sm">Stream tokens expire after ~6 hours.<br />Update the URL in channels.js with a fresh token.</p>
               )}

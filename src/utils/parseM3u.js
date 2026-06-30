@@ -106,12 +106,17 @@ function resolveDrm(ch) {
     return { url: ch.url, clearKey: { keyId, key }, licenseServer: null, drmSystem: 'clearkey', reqHeaders: null }
   }
 
-  // 2. la.drmlive.net Sling ClearKey license — proxy through /api/drmlive-ck to avoid CORS
+  // 2. la.drmlive.net Sling ClearKey license — proxy through /api/drmlive-ck to avoid CORS.
+  // Also proxy the MPD fetch through m3u-proxy: browser TLS fingerprint is blocked by
+  // la.drmlive.net Cloudflare; our server curl (OpenSSL on Linux/Vercel) is allowed.
   if (ls.includes('la.drmlive.net/tp/sling_ck')) {
     let id = null
     try { id = new URL(ls).searchParams.get('id') } catch {}
     const licenseServer = id ? `/api/drmlive-ck?id=${encodeURIComponent(id)}` : ls
-    return { url: ch.url, clearKey: null, licenseServer, drmSystem: 'clearkey', reqHeaders: null }
+    const url = ch.url.includes('la.drmlive.net')
+      ? `/api/m3u-proxy?url=${encodeURIComponent(ch.url)}`
+      : ch.url
+    return { url, clearKey: null, licenseServer, drmSystem: 'clearkey', reqHeaders: null }
   }
 
   // 3. Old Tata Play (tp.drmlive-01.workers.dev) — MPD and license via dedicated proxies
@@ -130,10 +135,20 @@ function resolveDrm(ch) {
 
   // 5. Generic URL-based ClearKey license server (mix.drmlive.net, etc.)
   if (ls && ls.startsWith('http')) {
-    return { url: ch.url, clearKey: null, licenseServer: ls, drmSystem: 'clearkey', reqHeaders: null }
+    // Proxy stream URL if it's on a DRMLive domain (browser TLS fingerprint blocked)
+    const url = (ch.url.includes('la.drmlive.net') || ch.url.includes('mix.drmlive.net'))
+      ? `/api/m3u-proxy?url=${encodeURIComponent(ch.url)}`
+      : ch.url
+    return { url, clearKey: null, licenseServer: ls, drmSystem: 'clearkey', reqHeaders: null }
   }
 
-  // 6. No DRM / plain HLS
+  // 6. No DRM / plain HLS — proxy if stream is on a DRMLive domain
+  if (ch.url.includes('la.drmlive.net') || ch.url.includes('mix.drmlive.net')) {
+    const url = `/api/m3u-proxy?url=${encodeURIComponent(ch.url)}`
+    return { url, clearKey: null, licenseServer: null, drmSystem: null, reqHeaders: null }
+  }
+
+  // 7. Plain HLS / no DRM
   return { url: ch.url, clearKey: null, licenseServer: null, drmSystem: null, reqHeaders: null }
 }
 

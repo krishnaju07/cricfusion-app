@@ -34,8 +34,10 @@ export default async function handler(req, res) {
                   targetUrl.includes('drmlive.net/tp/') ||
                   targetUrl.includes('mix.drmlive.net')
 
-  // Activation endpoint returns MPD/XML, not M3U — skip the #EXTM3U validation check.
-  const isActivation = targetUrl.includes('actchaljabsdk')
+  // Validate #EXTM3U only for known M3U playlist endpoints.
+  // MPD manifests, activation endpoints, and stream manifests skip this check.
+  const isM3uPlaylist = targetUrl.includes('/tp/playlist') || /\.(m3u|m3u8)(\?|$)/i.test(targetUrl)
+  const isMpd = /\.mpd(\?|$)/i.test(targetUrl) || targetUrl.includes('actchaljabsdk')
 
   if (useCurl) {
     try {
@@ -47,11 +49,14 @@ export default async function handler(req, res) {
         targetUrl,
       ], { maxBuffer: 10 * 1024 * 1024 })
 
-      if (!isActivation && (!stdout || !stdout.includes('#EXTM3U'))) {
+      if (isM3uPlaylist && (!stdout || !stdout.includes('#EXTM3U'))) {
         return res.status(502).end('Playlist server returned unexpected content')
       }
 
-      res.setHeader('Content-Type', isActivation ? 'application/dash+xml' : 'audio/x-mpegurl')
+      const ct = isMpd ? 'application/dash+xml'
+               : isM3uPlaylist ? 'audio/x-mpegurl'
+               : (stdout?.startsWith('#EXTM3U') ? 'audio/x-mpegurl' : 'application/octet-stream')
+      res.setHeader('Content-Type', ct)
       return res.status(200).send(stdout || '')
     } catch (err) {
       return res.status(502).end('Curl fetch failed: ' + err.message)
