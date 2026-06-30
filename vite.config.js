@@ -368,17 +368,20 @@ function m3uDevProxy() {
         try { targetUrl = decodeURIComponent(rawUrl); new URL(targetUrl) } catch { res.statusCode = 400; return res.end('Invalid URL') }
         res.setHeader('Access-Control-Allow-Origin', '*')
 
-        const useCurl = targetUrl.includes('la.drmlive.net') || targetUrl.includes('drmlive.net/tp/')
+        const useCurl = targetUrl.includes('la.drmlive.net') ||
+                        targetUrl.includes('drmlive.net/tp/') ||
+                        targetUrl.includes('mix.drmlive.net')
+        const isActivation = targetUrl.includes('actchaljabsdk')
         if (useCurl) {
           try {
             const { execFile } = await import('child_process')
             const { promisify } = await import('util')
             const { stdout } = await promisify(execFile)('curl', [
-              '-s', '-A', 'TiviMate/4.6.0 (Android)', '--max-time', '8', '--connect-timeout', '5', targetUrl,
+              '-s', '-L', '-A', 'TiviMate/4.6.0 (Android)', '--max-time', '10', '--connect-timeout', '6', targetUrl,
             ], { maxBuffer: 10 * 1024 * 1024 })
-            if (!stdout || !stdout.includes('#EXTM3U')) { res.statusCode = 502; return res.end('Unexpected content') }
-            res.setHeader('Content-Type', 'audio/x-mpegurl')
-            return res.end(stdout)
+            if (!isActivation && (!stdout || !stdout.includes('#EXTM3U'))) { res.statusCode = 502; return res.end('Unexpected content') }
+            res.setHeader('Content-Type', isActivation ? 'application/dash+xml' : 'audio/x-mpegurl')
+            return res.end(stdout || '')
           } catch (err) {
             console.error('[m3u-proxy-dev curl]', err.message)
             res.statusCode = 502; return res.end('curl error: ' + err.message)

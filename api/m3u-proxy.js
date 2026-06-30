@@ -28,25 +28,31 @@ export default async function handler(req, res) {
     return res.status(400).end('Invalid URL')
   }
 
-  // la.drmlive.net is bot-protected (JA3 fingerprint check): use curl instead of fetch
-  const useCurl = targetUrl.includes('la.drmlive.net') || targetUrl.includes('drmlive.net/tp/')
+  // drmlive.net requires TiviMate UA — Node.js undici is JA3-blocked, curl uses OpenSSL which is accepted.
+  // mix.drmlive.net activation endpoint also requires TiviMate UA (Chrome UA returns 543 Unauthorized).
+  const useCurl = targetUrl.includes('la.drmlive.net') ||
+                  targetUrl.includes('drmlive.net/tp/') ||
+                  targetUrl.includes('mix.drmlive.net')
+
+  // Activation endpoint returns MPD/XML, not M3U — skip the #EXTM3U validation check.
+  const isActivation = targetUrl.includes('actchaljabsdk')
 
   if (useCurl) {
     try {
       const { stdout } = await execFileAsync('curl', [
-        '-s',
+        '-s', '-L',
         '-A', 'TiviMate/4.6.0 (Android)',
-        '--max-time', '8',
-        '--connect-timeout', '5',
+        '--max-time', '10',
+        '--connect-timeout', '6',
         targetUrl,
       ], { maxBuffer: 10 * 1024 * 1024 })
 
-      if (!stdout || !stdout.includes('#EXTM3U')) {
+      if (!isActivation && (!stdout || !stdout.includes('#EXTM3U'))) {
         return res.status(502).end('Playlist server returned unexpected content')
       }
 
-      res.setHeader('Content-Type', 'audio/x-mpegurl')
-      return res.status(200).send(stdout)
+      res.setHeader('Content-Type', isActivation ? 'application/dash+xml' : 'audio/x-mpegurl')
+      return res.status(200).send(stdout || '')
     } catch (err) {
       return res.status(502).end('Curl fetch failed: ' + err.message)
     }
