@@ -443,6 +443,32 @@ function famelackDevProxy() {
   }
 }
 
+// Dev-time proxy for /cf-stream/(.*) — mirrors Vercel path-based route locally
+function streamDevProxy() {
+  return {
+    name: 'cf-stream-dev-proxy',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        if (!req.url?.startsWith('/cf-stream/')) return next()
+        res.setHeader('Access-Control-Allow-Origin', '*')
+        if (req.method === 'OPTIONS') { res.statusCode = 204; return res.end() }
+        try {
+          const mod = await import(pathToFileURL(nodePath.join(process.cwd(), 'api', 'cf-stream.js')).href + `?t=${Date.now()}`)
+          const path = req.url.slice('/cf-stream/'.length).split('?')[0]
+          const fakeReq = { method: req.method, query: { path }, headers: { referer: 'http://localhost:5173' } }
+          const fakeRes = {
+            _s: 200, status(c) { this._s = c; return this },
+            end(b)  { res.statusCode = this._s; res.end(b) },
+            send(b) { res.statusCode = this._s; res.end(b) },
+            setHeader(k, v) { res.setHeader(k, v) },
+          }
+          await mod.default(fakeReq, fakeRes)
+        } catch (e) { res.statusCode = 502; res.end('stream proxy error: ' + e.message) }
+      })
+    },
+  }
+}
+
 // Dev-time proxy for /api/cf-footballapi — runs the Vercel handler locally
 function footballapiDevProxy() {
   return {
@@ -505,7 +531,7 @@ function iptvDevProxy() {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), sonyLivDevProxy(), m3uDevProxy(), tpLicenseDevProxy(), tpWvLicenseDevProxy(), tpMpdProxyDev(), tpApiDevProxy(), fifaDevProxy(), m6DevProxy(), iptvDevProxy(), famelackDevProxy(), footballapiDevProxy()],
+  plugins: [react(), sonyLivDevProxy(), m3uDevProxy(), tpLicenseDevProxy(), tpWvLicenseDevProxy(), tpMpdProxyDev(), tpApiDevProxy(), fifaDevProxy(), m6DevProxy(), iptvDevProxy(), famelackDevProxy(), footballapiDevProxy(), streamDevProxy()],
   build: {
     chunkSizeWarningLimit: 1000,
   },
