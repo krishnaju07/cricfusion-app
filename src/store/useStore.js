@@ -286,7 +286,7 @@ export const useStore = create((set, get) => ({
     if (FEATURES.DRMLIVE) {
       const DRMLIVE_SPORTS_RE = /sport|cricket|football|soccer|fifa|wc\s*20|tennis|basketball|formula|f1|boxing|wrestling/i
       tasks.push(
-        fetch('/api/cf-drmlive').then((r) => r.text()).then((text) => {
+        fetch(`/api/m3u-proxy?url=${encodeURIComponent(DRMLIVE_M3U)}`).then((r) => r.text()).then((text) => {
           if (!text.includes('#EXTM3U')) return
           const parsed = parseM3u(text)
           sources.drmlive = parsed

@@ -105,36 +105,6 @@ function sonyLivDevProxy() {
   }
 }
 
-// Dev-time proxy for /api/cf-m6 — proxies M6 France manifest with correct Origin header
-function m6DevProxy() {
-  return {
-    name: 'm6-api-dev-proxy',
-    configureServer(server) {
-      server.middlewares.use(async (req, res, next) => {
-        if (!req.url?.startsWith('/api/cf-m6')) return next()
-        res.setHeader('Access-Control-Allow-Origin', '*')
-        if (req.method === 'OPTIONS') { res.statusCode = 204; return res.end() }
-        try {
-          const handlerUrl = pathToFileURL(nodePath.join(process.cwd(), 'api', 'cf-m6.js')).href + `?t=${Date.now()}`
-          const mod = await import(handlerUrl)
-          const fakeReq = { method: req.method, headers: { referer: 'http://localhost:5173' } }
-          const fakeRes = {
-            _status: 200,
-            status(c) { this._status = c; return this },
-            end(b) { res.statusCode = this._status; res.end(b) },
-            send(b) { res.statusCode = this._status; res.end(b) },
-            setHeader(k, v) { res.setHeader(k, v) },
-          }
-          await mod.default(fakeReq, fakeRes)
-        } catch (e) {
-          console.error('[m6-api-dev]', e)
-          res.statusCode = 500; res.end('dev error: ' + e.message)
-        }
-      })
-    },
-  }
-}
-
 // Dev-time proxy for /api/cf-fifa — runs the Vercel handler locally
 function fifaDevProxy() {
   return {
@@ -385,7 +355,7 @@ function tpWvLicenseDevProxy() {
   }
 }
 
-// Dev-time proxy for /api/m3u-proxy?url=... — fetches the M3U server-side
+// Dev-time proxy for /api/m3u-proxy?url=... — mirrors the Vercel handler (curl for drmlive URLs)
 function m3uDevProxy() {
   return {
     name: 'm3u-proxy-dev',
@@ -396,46 +366,34 @@ function m3uDevProxy() {
         if (!rawUrl) { res.statusCode = 400; return res.end('Missing ?url=') }
         let targetUrl
         try { targetUrl = decodeURIComponent(rawUrl); new URL(targetUrl) } catch { res.statusCode = 400; return res.end('Invalid URL') }
+        res.setHeader('Access-Control-Allow-Origin', '*')
+
+        const useCurl = targetUrl.includes('la.drmlive.net') || targetUrl.includes('drmlive.net/tp/')
+        if (useCurl) {
+          try {
+            const { execFile } = await import('child_process')
+            const { promisify } = await import('util')
+            const { stdout } = await promisify(execFile)('curl', [
+              '-s', '-A', 'TiviMate/4.6.0 (Android)', '--max-time', '8', '--connect-timeout', '5', targetUrl,
+            ], { maxBuffer: 10 * 1024 * 1024 })
+            if (!stdout || !stdout.includes('#EXTM3U')) { res.statusCode = 502; return res.end('Unexpected content') }
+            res.setHeader('Content-Type', 'audio/x-mpegurl')
+            return res.end(stdout)
+          } catch (err) {
+            console.error('[m3u-proxy-dev curl]', err.message)
+            res.statusCode = 502; return res.end('curl error: ' + err.message)
+          }
+        }
+
         try {
           const r = await fetch(targetUrl, { headers: { 'User-Agent': 'TiviMate/4.6.0 (Android)', 'Accept': '*/*' } })
           const text = await r.text()
-          res.setHeader('Access-Control-Allow-Origin', '*')
           res.setHeader('Content-Type', r.headers.get('content-type') || 'audio/x-mpegurl')
           res.statusCode = r.status
           return res.end(text)
         } catch (err) {
           console.error('[m3u-proxy-dev]', err.message)
           res.statusCode = 502; return res.end('m3u proxy error')
-        }
-      })
-    },
-  }
-}
-
-// Dev-time proxy for /api/cf-drmlive — fetches la.drmlive.net playlist with Tivimate UA
-function drmliveDevProxy() {
-  return {
-    name: 'drmlive-api-dev-proxy',
-    configureServer(server) {
-      server.middlewares.use(async (req, res, next) => {
-        if (!req.url?.startsWith('/api/cf-drmlive')) return next()
-        res.setHeader('Access-Control-Allow-Origin', '*')
-        if (req.method === 'OPTIONS') { res.statusCode = 204; return res.end() }
-        try {
-          const handlerUrl = pathToFileURL(nodePath.join(process.cwd(), 'api', 'cf-drmlive.js')).href + `?t=${Date.now()}`
-          const mod = await import(handlerUrl)
-          const fakeReq = { method: req.method, headers: req.headers }
-          const fakeRes = {
-            _status: 200,
-            status(c) { this._status = c; return this },
-            end(b) { res.statusCode = this._status; res.end(b) },
-            send(b) { res.statusCode = this._status; res.end(b) },
-            setHeader(k, v) { res.setHeader(k, v) },
-          }
-          await mod.default(fakeReq, fakeRes)
-        } catch (e) {
-          console.error('[drmlive-api-dev]', e)
-          res.statusCode = 500; res.end('dev error: ' + e.message)
         }
       })
     },
@@ -585,7 +543,7 @@ function iptvDevProxy() {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), sonyLivDevProxy(), m3uDevProxy(), tpLicenseDevProxy(), tpWvLicenseDevProxy(), tpMpdProxyDev(), tpApiDevProxy(), fifaDevProxy(), m6DevProxy(), iptvDevProxy(), famelackDevProxy(), footballapiDevProxy(), drmliveDevProxy(), drmliveCkDevProxy()],
+  plugins: [react(), sonyLivDevProxy(), m3uDevProxy(), tpLicenseDevProxy(), tpWvLicenseDevProxy(), tpMpdProxyDev(), tpApiDevProxy(), fifaDevProxy(), iptvDevProxy(), famelackDevProxy(), footballapiDevProxy(), drmliveCkDevProxy()],
   build: {
     chunkSizeWarningLimit: 1000,
   },
