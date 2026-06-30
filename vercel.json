@@ -2,8 +2,7 @@
   "routes": [
     { "src": "/fc-cdn/(.*)",  "dest": "/api/fc-cdn?path=$1" },
     { "src": "/sl-cdn/(.*)",  "dest": "/api/sl-cdn?path=$1" },
-    { "src": "/cf-geo/(.*)",    "dest": "/api/cf-geo?path=$1" },
-    { "src": "/cf-stream/(.*)", "dest": "/api/cf-stream?path=$1" },
+    { "src": "/cf-geo/(.*)",  "dest": "/api/cf-geo?path=$1" },
     { "handle": "filesystem" },
     { "src": "/(.*)",         "dest": "/index.html" }
   ]
