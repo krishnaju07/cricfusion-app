@@ -111,7 +111,7 @@ export default async function handler(req, res) {
 
   let data
   try {
-    const upstream = await fetch(API_URL, {
+    const upstream = await fetch(`${API_URL}?_t=${Date.now()}`, {
       headers: {
         origin:               API_ORIGIN,
         referer:              `${API_ORIGIN}/`,

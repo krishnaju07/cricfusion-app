@@ -492,9 +492,10 @@ export default function VideoPlayer({ channel, onLockChange, onBack }) {
         console.warn('Shaka error (severity', err?.severity, 'code', err?.code, ')', err)
         const isCritical = err?.severity === 2
         if (!isCritical) return
-        // Network-category errors (1xxx) on a live stream usually mean the
-        // embedded CDN token expired — refetch fresh channel data and retry.
-        if (err?.category === 1 && tryTokenRecovery(`Shaka network error ${err.code}`)) return
+        // err.data[1] is the HTTP status for BAD_HTTP_STATUS (1001)
+        const httpStatus = err.code === 1001 ? (err.data?.[1] ?? 0) : 0
+        // 400 = Amazon IVS stream offline — token recovery won't help, skip it
+        if (err?.category === 1 && httpStatus !== 400 && tryTokenRecovery(`Shaka network error ${err.code}`)) return
         if (channel.fallbackUrl && !fallbackTriedRef.current) {
           fallbackTriedRef.current = true
           update({ error: null, loading: true })
@@ -506,6 +507,7 @@ export default function VideoPlayer({ channel, onLockChange, onBack }) {
           err.code === 6001  ? 'DRM init failed — ClearKey config issue.' :
           err.code === 6002  ? 'DRM licence request failed.' :
           err.code === 6003  ? 'DRM licence rejected — key mismatch.' :
+          (err.code === 1001 && httpStatus === 400) ? 'Stream is offline or not broadcasting right now.' :
           err.code === 1001  ? 'Network error — CDN unreachable.' :
           err.code === 1002  ? 'Network timeout — check your connection.' :
           err.code === 3016  ? 'Stream expired — update the token in channels.js.' :
@@ -600,7 +602,8 @@ export default function VideoPlayer({ channel, onLockChange, onBack }) {
           if (isCancelled) return
           console.error('Shaka load failed', err)
           if (liveRef.current.playing || (liveRef.current.currentTime ?? 0) > 0) return
-          if (err?.category === 1 && tryTokenRecovery(`Shaka load network error ${err.code}`)) return
+          const httpStatus2 = err.code === 1001 ? (err.data?.[1] ?? 0) : 0
+          if (err?.category === 1 && httpStatus2 !== 400 && tryTokenRecovery(`Shaka load network error ${err.code}`)) return
           if (channel.fallbackUrl && !fallbackTriedRef.current) {
             fallbackTriedRef.current = true
             try { await player.load(channel.fallbackUrl, null, channel.mimeType || undefined); return } catch {}
@@ -612,6 +615,7 @@ export default function VideoPlayer({ channel, onLockChange, onBack }) {
             err.code === 6002  ? 'DRM licence request failed.' :
             err.code === 6003  ? 'DRM licence rejected — key mismatch.' :
             err.code === 4001  ? 'Stream failed — invalid manifest format.' :
+            (err.code === 1001 && httpStatus2 === 400) ? 'Stream is offline or not broadcasting right now.' :
             err.code === 1001  ? 'Network error — CDN unreachable.' :
             err.code === 3016  ? 'Segment fetch failed — token may be expired.' :
             err.code === 3032  ? 'Stream quality restricted — try refreshing.' :
