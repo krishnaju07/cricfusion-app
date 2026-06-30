@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   RefreshCw, Bell, BellOff, Shield, Info,
   ChevronRight, LogOut, Heart, X, Check,
-  Satellite, Smartphone, KeyRound, Trash2,
+  Satellite, Smartphone, KeyRound, Trash2, ListVideo, Upload,
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { FEATURES } from '../config/features'
@@ -141,13 +141,18 @@ export default function Account() {
     refreshChannels, channelsLoading, channels,
     notificationsEnabled, toggleNotifications,
     tpCreds, setTpCreds, clearTpCreds,
+    m3uUrl, setM3uUrl, m3uContent, setM3uContent,
   } = useStore()
 
-  const [showPrivacy, setShowPrivacy]   = useState(false)
-  const [showVersion, setShowVersion]   = useState(false)
-  const [showTpLogin, setShowTpLogin]   = useState(false)
-  const [notifBlocked, setNotifBlocked] = useState(false)
-  const [cacheState, setCacheState]     = useState('idle') // 'idle' | 'clearing' | 'done'
+  const [showPrivacy, setShowPrivacy]       = useState(false)
+  const [showVersion, setShowVersion]       = useState(false)
+  const [showTpLogin, setShowTpLogin]       = useState(false)
+  const [showPlaylist, setShowPlaylist]     = useState(false)
+  const [playlistMode, setPlaylistMode]     = useState('url')   // 'url' | 'paste'
+  const [playlistInput, setPlaylistInput]   = useState('')
+  const [pasteInput, setPasteInput]         = useState('')
+  const [notifBlocked, setNotifBlocked]     = useState(false)
+  const [cacheState, setCacheState]         = useState('idle') // 'idle' | 'clearing' | 'done'
 
   const clearCache = async () => {
     if (cacheState !== 'idle') return
@@ -212,6 +217,7 @@ export default function Account() {
   }
 
   const tpChannelCount = channels.filter((c) => c.key?.startsWith('tp_')).length
+  const playlistCount  = channels.filter((c) => c.key?.startsWith('m3u_')).length
   const liveCount = channels.filter((c) => c.isLive).length
 
   const handleToggleNotifications = async () => {
@@ -294,6 +300,45 @@ export default function Account() {
           />
         )}
       </Section>}
+
+      {/* Playlist */}
+      <Section title="Playlist">
+        {(m3uUrl || m3uContent) ? (
+          <>
+            <div className="px-4 py-3 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-purple-500/15 flex items-center justify-center flex-shrink-0">
+                <ListVideo size={18} className="text-purple-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-sm font-medium">Custom Playlist</p>
+                <p className="text-white/40 text-xs mt-0.5 truncate">
+                  {m3uContent ? 'Pasted M3U content' : m3uUrl}
+                </p>
+              </div>
+              {playlistCount > 0 && (
+                <span className="text-purple-400 text-xs font-bold bg-purple-500/15 px-2 py-0.5 rounded-full flex-shrink-0">
+                  {playlistCount} ch
+                </span>
+              )}
+            </div>
+            <Divider />
+            <Row
+              icon={Trash2}
+              label="Remove Playlist"
+              onClick={() => { setM3uUrl(''); setM3uContent(''); refreshChannels() }}
+              accent="red"
+            />
+          </>
+        ) : (
+          <Row
+            icon={ListVideo}
+            label="Add Playlist"
+            value="M3U"
+            onClick={() => { setPlaylistInput(''); setPasteInput(''); setShowPlaylist(true) }}
+            accent="purple"
+          />
+        )}
+      </Section>
 
       {/* Channels */}
       <Section title="Channels">
@@ -460,6 +505,117 @@ export default function Account() {
           </p>
         </div>
       </BottomSheet>}
+
+      {/* ── Playlist Sheet ── */}
+      <BottomSheet open={showPlaylist} onClose={() => setShowPlaylist(false)} title="Add Playlist">
+        {/* Tab switcher */}
+        <div className="flex mx-5 mt-4 rounded-xl overflow-hidden bg-dark-900 border border-white/[0.08]">
+          <button
+            onClick={() => setPlaylistMode('url')}
+            className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${playlistMode === 'url' ? 'bg-brand-500 text-black' : 'text-white/40 hover:text-white/60'}`}
+          >
+            URL
+          </button>
+          <button
+            onClick={() => setPlaylistMode('paste')}
+            className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${playlistMode === 'paste' ? 'bg-brand-500 text-black' : 'text-white/40 hover:text-white/60'}`}
+          >
+            Paste M3U
+          </button>
+        </div>
+
+        <div className="px-5 py-4 pb-8 space-y-4">
+          {playlistMode === 'url' ? (
+            <>
+              <p className="text-white/40 text-[13px] leading-relaxed">
+                Enter a publicly accessible M3U URL. URLs protected by bot detection (e.g. la.drmlive.net) won't work here — use <span className="text-white/60">Paste M3U</span> instead.
+              </p>
+              <div className="space-y-1">
+                <label className="text-white/50 text-[11px] font-semibold uppercase tracking-wider">Playlist URL</label>
+                <input
+                  type="url"
+                  value={playlistInput}
+                  onChange={(e) => setPlaylistInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const url = playlistInput.trim()
+                      if (url.startsWith('http')) { setM3uUrl(url); setShowPlaylist(false); refreshChannels() }
+                    }
+                  }}
+                  placeholder="https://example.com/playlist.m3u"
+                  autoFocus
+                  className="w-full bg-dark-900 border border-white/[0.1] rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-brand-500/60 transition-colors"
+                />
+              </div>
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => {
+                  const url = playlistInput.trim()
+                  if (!url.startsWith('http')) return
+                  setM3uContent('')
+                  setM3uUrl(url)
+                  setShowPlaylist(false)
+                  refreshChannels()
+                }}
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-semibold text-sm text-black"
+                style={{ background: 'linear-gradient(135deg, rgba(200,255,0,0.9) 0%, rgba(160,220,0,0.95) 100%)' }}
+              >
+                <ListVideo size={15} />Save Playlist
+              </motion.button>
+            </>
+          ) : (
+            <>
+              <p className="text-white/40 text-[13px] leading-relaxed">
+                Open your playlist URL in a browser tab, select all text (Ctrl+A), copy and paste below. Or load a .m3u file from your device.
+              </p>
+              <div className="space-y-1">
+                <label className="text-white/50 text-[11px] font-semibold uppercase tracking-wider">M3U Content</label>
+                <textarea
+                  value={pasteInput}
+                  onChange={(e) => setPasteInput(e.target.value)}
+                  placeholder={'#EXTM3U\n#EXTINF:-1,Channel Name\nhttp://stream.url/...'}
+                  rows={6}
+                  className="w-full bg-dark-900 border border-white/[0.1] rounded-xl px-4 py-3 text-white text-xs font-mono placeholder:text-white/20 focus:outline-none focus:border-brand-500/60 transition-colors resize-none"
+                />
+              </div>
+              <label className="flex items-center justify-center gap-2 py-3 rounded-xl border border-white/[0.1] text-white/40 text-sm cursor-pointer hover:border-white/20 hover:text-white/60 transition-colors">
+                <Upload size={15} />
+                Load from .m3u file
+                <input
+                  type="file"
+                  accept=".m3u,.m3u8,.txt"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    const reader = new FileReader()
+                    reader.onload = (ev) => setPasteInput(ev.target?.result || '')
+                    reader.readAsText(file)
+                  }}
+                />
+              </label>
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => {
+                  const text = pasteInput.trim()
+                  if (!text.includes('#EXTM3U') && !text.includes('#EXTINF')) return
+                  setM3uUrl('')
+                  setM3uContent(text)
+                  setShowPlaylist(false)
+                  refreshChannels()
+                }}
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-semibold text-sm text-black"
+                style={{ background: 'linear-gradient(135deg, rgba(200,255,0,0.9) 0%, rgba(160,220,0,0.95) 100%)' }}
+              >
+                <ListVideo size={15} />Load Playlist
+              </motion.button>
+            </>
+          )}
+          <p className="text-white/20 text-[11px] text-center leading-relaxed">
+            Supports M3U / M3U8. DRM streams may require additional setup.
+          </p>
+        </div>
+      </BottomSheet>
 
       {/* ── Version Sheet ── */}
       <BottomSheet open={showVersion} onClose={() => setShowVersion(false)} title="About CricFusion">

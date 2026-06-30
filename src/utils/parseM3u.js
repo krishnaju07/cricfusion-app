@@ -3,6 +3,7 @@ const GROUP_CATEGORY = {
   cricket:       'cricket',
   football:      'football',
   soccer:        'football',
+  fifa:          'football',
   tennis:        'tennis',
   basketball:    'basketball',
   'formula 1':   'formula1',
@@ -58,6 +59,10 @@ function nameToCategory(name) {
   return null
 }
 
+// Inline ClearKey: two 32-char hex strings separated by ':'
+// e.g. "14eeabf30c14b7fbf3008c03099ce011:17d2ac8dbc5429bd70af3433aa12158d"
+const INLINE_CK_RE = /^[0-9a-f]{32}:[0-9a-f]{32}$/i
+
 // Parse an M3U text into raw channel objects.
 // Handles #EXTINF, #KODIPROP license key/type, and the stream URL line.
 // Strips IPTV pipe-header suffixes (|key=val) from URLs.
@@ -68,11 +73,13 @@ export function parseM3u(text) {
 
   for (const line of lines) {
     if (line.startsWith('#EXTINF')) {
-      const logo   = line.match(/tvg-logo="([^"]*)"/)?.[1] || ''
-      const group  = line.match(/group-title="([^"]*)"/)?.[1] || 'General'
-      const tvgId  = line.match(/tvg-id="([^"]*)"/)?.[1] || ''
-      const name   = line.match(/,(.+)$/)?.[1]?.trim() || 'Unknown'
-      meta = { logo, group, tvgId, name, licenseServer: null }
+      const logo        = line.match(/tvg-logo="([^"]*)"/)?.[1] || ''
+      const group       = line.match(/group-title="([^"]*)"/)?.[1] || 'General'
+      const tvgId       = line.match(/tvg-id="([^"]*)"/)?.[1] || ''
+      const name        = line.match(/,(.+)$/)?.[1]?.trim() || 'Unknown'
+      meta = { logo, group, tvgId, name, licenseServer: null, licenseType: null }
+    } else if (line.startsWith('#KODIPROP:inputstream.adaptive.license_type=') && meta) {
+      meta.licenseType = line.replace('#KODIPROP:inputstream.adaptive.license_type=', '').trim()
     } else if (line.startsWith('#KODIPROP:inputstream.adaptive.license_key=') && meta) {
       meta.licenseServer = line.replace('#KODIPROP:inputstream.adaptive.license_key=', '').trim()
     } else if (!line.startsWith('#') && meta) {
@@ -87,30 +94,58 @@ export function parseM3u(text) {
   return channels
 }
 
-// For Tata Play channels (license URL via tp.drmlive-01.workers.dev):
-// - Route the MPD URL through /api/tp-mpd-proxy (adds ClearKey system ID)
-// - Route the license URL through /api/tp-license (ClearKey JSON proxy)
-// Headers are handled server-side; no reqHeaders needed in browser.
-function resolveTpUrls(ch) {
+// Resolve stream URL and DRM config from a parsed M3U channel.
+// Returns { url, clearKey, licenseServer, drmSystem, reqHeaders }.
+function resolveDrm(ch) {
   const ls = ch.licenseServer || ''
-  if (!ls.includes('tp.drmlive-01.workers.dev')) {
-    return { url: ch.url, licenseServer: ls || null, reqHeaders: null }
-  }
-  let tpId = null
-  try { tpId = new URL(ls).searchParams.get('id') } catch {}
+  const lt = (ch.licenseType || '').toLowerCase()
 
-  const url = `/api/tp-mpd-proxy?url=${encodeURIComponent(ch.url)}`
-  const licenseServer = tpId ? `/api/tp-license?id=${encodeURIComponent(tpId)}` : ls
-  return { url, licenseServer, reqHeaders: null }
+  // 1. Inline KID:KEY clearkey pair (e.g. TSN channels from Amazon IVS)
+  if (INLINE_CK_RE.test(ls)) {
+    const [keyId, key] = ls.split(':')
+    return { url: ch.url, clearKey: { keyId, key }, licenseServer: null, drmSystem: 'clearkey', reqHeaders: null }
+  }
+
+  // 2. la.drmlive.net Sling ClearKey license — proxy through /api/drmlive-ck to avoid CORS
+  if (ls.includes('la.drmlive.net/tp/sling_ck')) {
+    let id = null
+    try { id = new URL(ls).searchParams.get('id') } catch {}
+    const licenseServer = id ? `/api/drmlive-ck?id=${encodeURIComponent(id)}` : ls
+    return { url: ch.url, clearKey: null, licenseServer, drmSystem: 'clearkey', reqHeaders: null }
+  }
+
+  // 3. Old Tata Play (tp.drmlive-01.workers.dev) — MPD and license via dedicated proxies
+  if (ls.includes('tp.drmlive-01.workers.dev')) {
+    let tpId = null
+    try { tpId = new URL(ls).searchParams.get('id') } catch {}
+    const url = `/api/tp-mpd-proxy?url=${encodeURIComponent(ch.url)}`
+    const licenseServer = tpId ? `/api/tp-license?id=${encodeURIComponent(tpId)}` : ls
+    return { url, clearKey: null, licenseServer, drmSystem: 'clearkey', reqHeaders: null }
+  }
+
+  // 4. Widevine — browser EME; VideoPlayer uses com.widevine.alpha
+  if (lt === 'com.widevine.alpha' || lt.includes('widevine')) {
+    return { url: ch.url, clearKey: null, licenseServer: ls || null, drmSystem: 'widevine', reqHeaders: null }
+  }
+
+  // 5. Generic URL-based ClearKey license server (mix.drmlive.net, etc.)
+  if (ls && ls.startsWith('http')) {
+    return { url: ch.url, clearKey: null, licenseServer: ls, drmSystem: 'clearkey', reqHeaders: null }
+  }
+
+  // 6. No DRM / plain HLS
+  return { url: ch.url, clearKey: null, licenseServer: null, drmSystem: null, reqHeaders: null }
 }
 
 // Map a parsed M3U channel into the CricFusion channel schema.
-export function mapM3uChannel(ch, id) {
+// keyPrefix  — prefix for the unique channel key (default 'tp' for backward-compat)
+// sourceLabel — label shown in channel description (default 'Tata Play')
+export function mapM3uChannel(ch, id, { keyPrefix = 'tp', sourceLabel = 'Tata Play' } = {}) {
   const isHd = /\bHD\b/i.test(ch.name)
-  const { url, licenseServer, reqHeaders } = resolveTpUrls(ch)
+  const { url, clearKey, licenseServer, drmSystem, reqHeaders } = resolveDrm(ch)
   return {
     id,
-    key:          `tp_${ch.tvgId || id}`,
+    key:          `${keyPrefix}_${ch.tvgId || id}`,
     name:         ch.name,
     category:     nameToCategory(ch.name) || groupToCategory(ch.group),
     currentMatch: ch.name,
@@ -120,11 +155,12 @@ export function mapM3uChannel(ch, id) {
     viewers:      '—',
     badge:        isHd ? 'HD' : 'SD',
     language:     'Hindi',
-    description:  `${ch.name} — Tata Play`,
+    description:  `${ch.name} — ${sourceLabel}`,
     score:        null,
     url,
-    clearKey:     null,
+    clearKey,
     licenseServer,
+    drmSystem,
     reqHeaders,
     quality: ['Auto'],
   }

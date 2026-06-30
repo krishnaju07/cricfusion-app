@@ -30,6 +30,7 @@ const IPTV_PROXY    = '/cf-iptv'      // SW → /api/cf-iptv (iptv-eldbert FIFA 
 const CXFUT_PROXY       = '/cf-cxfut'       // SW → /api/cf-cxfut (lchdxfootball premium.js HLS)
 const FOOTSTERS_PROXY   = '/cf-footsters'   // SW → /api/cf-footsters (footsters-live + footsters-tv redirect-resolved HLS)
 const FOOTBALLAPI_PROXY = '/cf-footballapi' // SW → /api/cf-footballapi (footballapi-delta — all FIFA streams, Origin-gated)
+const DRMLIVE_M3U = 'https://la.drmlive.net/tp/playlist' // routed via m3u-proxy (Tivimate UA, avoids bot detection)
 // Star/Sony Sports: Jio CDN DASH + ClearKey + short-lived token. CORS-open, so
 // fetched directly (no SW proxy needed).
 const STARSONY_URL  = 'https://sayan-json-4.pages.dev/Data/sports.json'
@@ -108,6 +109,12 @@ export const useStore = create((set, get) => ({
     try { localStorage.setItem('cf_m3uUrl', url) } catch {}
     set({ m3uUrl: url, lastFetched: null })
   },
+  // Pasted M3U text — parsed client-side, no server fetch (bypasses bot-detection)
+  m3uContent: ls('cf_m3uContent', ''),
+  setM3uContent: (text) => {
+    try { localStorage.setItem('cf_m3uContent', text) } catch {}
+    set({ m3uContent: text, lastFetched: null })
+  },
 
   // ── Tata Play credentials (OTP login) ─────────────────────────────────
   tpCreds: (() => { try { return JSON.parse(localStorage.getItem('cf_tpCreds') || 'null') } catch { return null } })(),
@@ -156,13 +163,14 @@ export const useStore = create((set, get) => ({
       fancode:  [],
       sonyliv:  [],
       starsony: [],
+      drmlive:  [],
       tp:       [],
       m3u:      [],
       sports:   [],
       tamil:    [],
     }
     // Fixed render order — independent of which fetch finishes first.
-    const ORDER = ['wc2026', 'dynamic', 'fifa', 'fancode', 'sonyliv', 'starsony', 'tp', 'm3u', 'sports', 'tamil']
+    const ORDER = ['wc2026', 'dynamic', 'fifa', 'fancode', 'sonyliv', 'starsony', 'drmlive', 'tp', 'm3u', 'sports', 'tamil']
 
     const commit = (extra = {}) => {
       const allChannels = [
@@ -272,6 +280,23 @@ export const useStore = create((set, get) => ({
       )
     })
 
+    // ── la.drmlive.net playlist (Cricket, FIFA WC 2026, Sony, Willow, ICC TV…) ──
+    // Routed through /api/m3u-proxy so the Tivimate User-Agent is injected server-side,
+    // bypassing Cloudflare bot detection that blocks Node.js native fetch.
+    if (FEATURES.DRMLIVE) {
+      const DRMLIVE_SPORTS_RE = /sport|cricket|football|soccer|fifa|wc\s*20|tennis|basketball|formula|f1|boxing|wrestling/i
+      tasks.push(
+        fetch('/api/cf-drmlive').then((r) => r.text()).then((text) => {
+          if (!text.includes('#EXTM3U')) return
+          const parsed = parseM3u(text)
+          sources.drmlive = parsed
+            .filter((ch) => ch.group !== '1-Playlist-Activation' && DRMLIVE_SPORTS_RE.test(ch.group))
+            .map((ch, i) => mapM3uChannel(ch, 5000 + i + 1, { keyPrefix: 'dl', sourceLabel: 'DRMLive' }))
+          commit()
+        }).catch((e) => console.warn('DRMLive playlist load failed:', e))
+      )
+    }
+
     // ── Tata Play (native OTP login — loads all channels from API) ────────
     if (FEATURES.TATAPLAY) {
       const tpCreds = get().tpCreds
@@ -286,15 +311,22 @@ export const useStore = create((set, get) => ({
       }
     }
 
-    // ── Custom M3U playlist (fallback for non-TP IPTV sources) ────────────
-    const m3uUrl = get().m3uUrl
-    if (m3uUrl) {
+    // ── Custom M3U playlist ───────────────────────────────────────────────
+    // m3uContent (pasted text) takes priority — parsed client-side, no fetch.
+    // m3uUrl falls back to proxy fetch (only works for non-bot-protected URLs).
+    const m3uUrl     = get().m3uUrl
+    const m3uContent = get().m3uContent
+    const buildM3u = (parsed) => parsed
+      .filter((ch) => !sources.tp.length || !ch.licenseServer?.includes('tp.drmlive-01.workers.dev'))
+      .map((ch, i) => ({ ...mapM3uChannel(ch, 400 + i + 1, { keyPrefix: 'm3u', sourceLabel: 'Custom' }), category: 'playlist' }))
+
+    if (m3uContent) {
+      sources.m3u = buildM3u(parseM3u(m3uContent))
+      commit()
+    } else if (m3uUrl) {
       tasks.push(
         fetch(`/api/m3u-proxy?url=${encodeURIComponent(m3uUrl)}`).then((r) => r.text()).then((text) => {
-          const parsed = parseM3u(text)
-          sources.m3u = parsed
-            .filter((ch) => !sources.tp.length || !ch.licenseServer?.includes('tp.drmlive-01.workers.dev'))
-            .map((ch, i) => mapM3uChannel(ch, 400 + i + 1))
+          sources.m3u = buildM3u(parseM3u(text))
           commit()
         }).catch((e) => console.warn('M3U load failed:', e))
       )

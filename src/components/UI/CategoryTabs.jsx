@@ -3,11 +3,16 @@ import { useStore } from '../../store/useStore'
 import { categories } from '../../data/channels'
 
 export default function CategoryTabs() {
-  const { activeCategory, setActiveCategory } = useStore()
+  const { activeCategory, setActiveCategory, m3uUrl, m3uContent } = useStore()
+
+  const tabs = [
+    ...categories,
+    ...(m3uUrl || m3uContent ? [{ id: 'playlist', label: 'Playlist', icon: '📋' }] : []),
+  ]
 
   return (
     <div className="flex gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
-      {categories.map((cat) => {
+      {tabs.map((cat) => {
         const active = activeCategory === cat.id
         return (
           <motion.button

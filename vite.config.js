@@ -412,6 +412,86 @@ function m3uDevProxy() {
   }
 }
 
+// Dev-time proxy for /api/cf-drmlive — fetches la.drmlive.net playlist with Tivimate UA
+function drmliveDevProxy() {
+  return {
+    name: 'drmlive-api-dev-proxy',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        if (!req.url?.startsWith('/api/cf-drmlive')) return next()
+        res.setHeader('Access-Control-Allow-Origin', '*')
+        if (req.method === 'OPTIONS') { res.statusCode = 204; return res.end() }
+        try {
+          const handlerUrl = pathToFileURL(nodePath.join(process.cwd(), 'api', 'cf-drmlive.js')).href + `?t=${Date.now()}`
+          const mod = await import(handlerUrl)
+          const fakeReq = { method: req.method, headers: req.headers }
+          const fakeRes = {
+            _status: 200,
+            status(c) { this._status = c; return this },
+            end(b) { res.statusCode = this._status; res.end(b) },
+            send(b) { res.statusCode = this._status; res.end(b) },
+            setHeader(k, v) { res.setHeader(k, v) },
+          }
+          await mod.default(fakeReq, fakeRes)
+        } catch (e) {
+          console.error('[drmlive-api-dev]', e)
+          res.statusCode = 500; res.end('dev error: ' + e.message)
+        }
+      })
+    },
+  }
+}
+
+// Dev-time proxy for /api/drmlive-ck — ClearKey license proxy for Sling channels
+function drmliveCkDevProxy() {
+  return {
+    name: 'drmlive-ck-dev-proxy',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        if (!req.url?.startsWith('/api/drmlive-ck')) return next()
+        res.setHeader('Access-Control-Allow-Origin', '*')
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        res.setHeader('Access-Control-Allow-Headers', '*')
+        if (req.method === 'OPTIONS') { res.statusCode = 204; return res.end() }
+
+        // Read body before passing to handler (handler uses `for await (const chunk of req)`)
+        let bodyBuffer = Buffer.alloc(0)
+        if (req.method === 'POST') {
+          bodyBuffer = await new Promise((resolve) => {
+            const chunks = []
+            req.on('data', (c) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)))
+            req.on('end', () => resolve(Buffer.concat(chunks)))
+          })
+        }
+
+        const qs = new URL(req.url, 'http://localhost')
+        try {
+          const handlerUrl = pathToFileURL(nodePath.join(process.cwd(), 'api', 'drmlive-ck.js')).href + `?t=${Date.now()}`
+          const mod = await import(handlerUrl)
+          const fakeReq = {
+            method: req.method,
+            query: Object.fromEntries(qs.searchParams),
+            headers: req.headers,
+            [Symbol.asyncIterator]: async function* () { if (bodyBuffer.length) yield bodyBuffer },
+          }
+          const fakeRes = {
+            _status: 200,
+            status(c) { this._status = c; return this },
+            end(b) { res.statusCode = this._status; res.end(b) },
+            send(b) { res.statusCode = this._status; res.end(b) },
+            json(b) { res.setHeader('Content-Type', 'application/json'); res.statusCode = this._status; res.end(JSON.stringify(b)) },
+            setHeader(k, v) { res.setHeader(k, v) },
+          }
+          await mod.default(fakeReq, fakeRes)
+        } catch (e) {
+          console.error('[drmlive-ck-dev]', e)
+          res.statusCode = 500; res.end('dev error: ' + e.message)
+        }
+      })
+    },
+  }
+}
+
 // Dev-time proxy for /api/cf-famelack — fetches, gunzips, and filters Tamil channels
 function famelackDevProxy() {
   return {
@@ -505,7 +585,7 @@ function iptvDevProxy() {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), sonyLivDevProxy(), m3uDevProxy(), tpLicenseDevProxy(), tpWvLicenseDevProxy(), tpMpdProxyDev(), tpApiDevProxy(), fifaDevProxy(), m6DevProxy(), iptvDevProxy(), famelackDevProxy(), footballapiDevProxy()],
+  plugins: [react(), sonyLivDevProxy(), m3uDevProxy(), tpLicenseDevProxy(), tpWvLicenseDevProxy(), tpMpdProxyDev(), tpApiDevProxy(), fifaDevProxy(), m6DevProxy(), iptvDevProxy(), famelackDevProxy(), footballapiDevProxy(), drmliveDevProxy(), drmliveCkDevProxy()],
   build: {
     chunkSizeWarningLimit: 1000,
   },
