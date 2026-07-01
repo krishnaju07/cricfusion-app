@@ -3,10 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   RefreshCw, Bell, BellOff, Shield, Info,
   ChevronRight, LogOut, Heart, X, Check,
-  Satellite, Smartphone, KeyRound, Trash2, ListVideo, Upload,
+  Satellite, Smartphone, KeyRound, Trash2, ListVideo, Upload, Zap,
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { FEATURES } from '../config/features'
+import { parseM3u } from '../utils/parseM3u'
 
 const APP_VERSION = '1.0.0'
 
@@ -153,6 +154,29 @@ export default function Account() {
   const [pasteInput, setPasteInput]         = useState('')
   const [notifBlocked, setNotifBlocked]     = useState(false)
   const [cacheState, setCacheState]         = useState('idle') // 'idle' | 'clearing' | 'done'
+  const [activateStatus, setActivateStatus] = useState('idle') // 'idle' | 'loading' | 'done' | 'error'
+
+  const isDrmlivePlaylist = (m3uUrl || '').includes('drmlive.net') || (m3uContent || '').includes('1-Playlist-Activation')
+
+  const handleActivate = async () => {
+    if (activateStatus === 'loading') return
+    setActivateStatus('loading')
+    try {
+      let text = m3uContent
+      if (!text && m3uUrl) {
+        const r = await fetch(`/api/m3u-proxy?url=${encodeURIComponent(m3uUrl)}`)
+        text = await r.text()
+      }
+      if (!text?.includes('#EXTM3U')) { setActivateStatus('error'); return }
+      const parsed = parseM3u(text)
+      const act = parsed.find((ch) => ch.group === '1-Playlist-Activation')
+      if (!act?.url) { setActivateStatus('error'); return }
+      const ar = await fetch(`/api/m3u-proxy?url=${encodeURIComponent(act.url)}`, { cache: 'no-store' })
+      setActivateStatus(ar.ok ? 'done' : 'error')
+    } catch {
+      setActivateStatus('error')
+    }
+  }
 
   const clearCache = async () => {
     if (cacheState !== 'idle') return
@@ -321,6 +345,46 @@ export default function Account() {
                 </span>
               )}
             </div>
+            {isDrmlivePlaylist && (
+              <>
+                <Divider />
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleActivate}
+                  className="w-full flex items-center gap-4 px-4 py-3.5 hover:bg-white/[0.04] transition-colors"
+                >
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                    activateStatus === 'done'  ? 'bg-brand-500/15' :
+                    activateStatus === 'error' ? 'bg-red-500/15' :
+                    'bg-yellow-500/15'
+                  }`}>
+                    {activateStatus === 'done'
+                      ? <Check size={18} className="text-brand-500" />
+                      : activateStatus === 'loading'
+                        ? <RefreshCw size={18} className="text-yellow-400 animate-spin" />
+                        : <Zap size={18} className={activateStatus === 'error' ? 'text-red-400' : 'text-yellow-400'} />
+                    }
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className={`text-sm font-medium ${
+                      activateStatus === 'done'  ? 'text-brand-400' :
+                      activateStatus === 'error' ? 'text-red-400' :
+                      'text-white'
+                    }`}>
+                      {activateStatus === 'loading' ? 'Activating…' :
+                       activateStatus === 'done'    ? 'Playlist Activated' :
+                       activateStatus === 'error'   ? 'Activation Failed — Tap to Retry' :
+                       'Activate DRMLive Playlist'}
+                    </p>
+                    <p className="text-white/30 text-xs mt-0.5">
+                      {activateStatus === 'done'
+                        ? 'Streams are now unlocked on this server'
+                        : 'Required for streams to work — tap to activate'}
+                    </p>
+                  </div>
+                </motion.button>
+              </>
+            )}
             <Divider />
             <Row
               icon={Trash2}
@@ -528,7 +592,7 @@ export default function Account() {
           {playlistMode === 'url' ? (
             <>
               <p className="text-white/40 text-[13px] leading-relaxed">
-                Enter a publicly accessible M3U URL. URLs protected by bot detection (e.g. la.drmlive.net) won't work here — use <span className="text-white/60">Paste M3U</span> instead.
+                Enter an M3U URL. DRMLive URLs (la.drmlive.net) are supported — they're fetched server-side. After saving, tap <span className="text-white/60">Activate DRMLive Playlist</span> to unlock streams.
               </p>
               <div className="space-y-1">
                 <label className="text-white/50 text-[11px] font-semibold uppercase tracking-wider">Playlist URL</label>
