@@ -27,9 +27,13 @@ export default async function handler(req, res) {
         'Accept-Language': 'en-GB,en-US;q=0.9,en;q=0.8',
       }
     : {
-        accept: 'application/json, text/plain, */*',
-        'user-agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
+        'Origin': 'https://cricpulse.pages.dev',
+        'Referer': 'https://cricpulse.pages.dev',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Sec-Fetch-Site': 'cross-site',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Dest': 'empty',
       }
 
   let resp
