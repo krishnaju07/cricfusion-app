@@ -292,7 +292,14 @@ export const useStore = create((set, get) => ({
       }
     }
 
-    if (FEATURES.DRMLIVE) {
+    // Skip DRMLIVE auto-fetch if user already added the DRMLive URL as their custom playlist
+    // (avoids loading the same 2000+ channels twice under different sources).
+    const m3uUrlEarly = get().m3uUrl
+    const m3uContentEarly = get().m3uContent
+    const userHasDrmlive = (m3uUrlEarly || '').includes('la.drmlive.net') ||
+                           (m3uContentEarly || '').includes('la.drmlive.net')
+
+    if (FEATURES.DRMLIVE && !userHasDrmlive) {
       const DRMLIVE_SPORTS_RE = /sport|cricket|football|soccer|fifa|wc\s*20|tennis|basketball|formula|f1|boxing|wrestling/i
       tasks.push(
         fetch(`/api/m3u-proxy?url=${encodeURIComponent(DRMLIVE_M3U)}`).then((r) => r.text()).then((text) => {
@@ -327,11 +334,8 @@ export const useStore = create((set, get) => ({
     // If m3uUrl is the same DRMLive playlist already auto-loaded above, skip to avoid duplication.
     const m3uUrl     = get().m3uUrl
     const m3uContent = get().m3uContent
-    const SPORTS_M3U_RE = /sport|cricket|football|soccer|fifa|wc.?20|tennis|basketball|formula|f1|boxing|wrestling/i
-    const isDrmliveUrl = (url) => (url || '').includes('la.drmlive.net')
-    const buildM3u = (parsed, url = '') => parsed
+    const buildM3u = (parsed) => parsed
       .filter((ch) => ch.group !== '1-Playlist-Activation')
-      .filter((ch) => !isDrmliveUrl(url) || SPORTS_M3U_RE.test(ch.group))  // sports-only for drmlive URLs
       .filter((ch) => !sources.tp.length || !ch.licenseServer?.includes('tp.drmlive-01.workers.dev'))
       .map((ch, i) => ({ ...mapM3uChannel(ch, 400 + i + 1, { keyPrefix: 'm3u', sourceLabel: 'Custom' }), category: 'playlist' }))
 
@@ -345,7 +349,7 @@ export const useStore = create((set, get) => ({
         fetch(`/api/m3u-proxy?url=${encodeURIComponent(m3uUrl)}`).then((r) => r.text()).then((text) => {
           const parsed = parseM3u(text)
           triggerDrmliveActivation(parsed)
-          sources.m3u = buildM3u(parsed, m3uUrl)
+          sources.m3u = buildM3u(parsed)
           commit()
         }).catch((e) => console.warn('M3U load failed:', e))
       )

@@ -69,6 +69,9 @@ function stripWidevinePssh(input) {
 // Amazon IVS and CMAF CDNs always expose parallel HLS endpoints.
 function deriveSafariHlsUrl(mpd) {
   if (!mpd) return null
+  // Proxy URLs (m3u-proxy, tp-mpd-proxy, etc.) point to server-side fetched content —
+  // there's no parallel HLS URL at the same proxy path. Return null → show Safari error.
+  if (mpd.startsWith('/api/')) return null
   // Amazon IVS: /clients/dash/enc/.../cenc.mpd → /clients/hls/enc/.../index.m3u8
   if (mpd.includes('/clients/dash/enc/')) {
     return mpd.replace('/clients/dash/enc/', '/clients/hls/enc/').replace(/\/cenc\.mpd$/, '/index.m3u8')
@@ -332,7 +335,7 @@ export default function VideoPlayer({ channel, onLockChange, onBack }) {
     }
 
     const isMPD = channel.url.includes('.mpd') || channel.url.includes('/api/tp-mpd') || channel.url.includes('/api/cf-m6')
-    const isHLS = channel.url.includes('.m3u8')
+    const isHLS = channel.url.includes('.m3u8') || (channel.url.includes('/api/m3u-proxy') && !isMPD)
 
     // ── DASH / MPD via Shaka Player ──
     if (isMPD) {

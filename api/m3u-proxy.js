@@ -3,6 +3,22 @@ import { promisify } from 'util'
 
 const execFileAsync = promisify(execFile)
 
+// Rewrite relative URLs in an M3U8 to absolute so players (hls.js on mobile)
+// can fetch segments directly from the origin CDN, not from this proxy path.
+function rewriteM3u8Urls(text, baseUrl) {
+  if (!text || !text.includes('#EXTM3U')) return text
+  let base
+  try { base = new URL(baseUrl) } catch { return text }
+  const baseDir = base.origin + base.pathname.replace(/\/[^/]*$/, '/')
+  return text.split('\n').map((line) => {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#')) return line
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return line
+    if (trimmed.startsWith('/')) return base.origin + trimmed
+    return baseDir + trimmed
+  }).join('\n')
+}
+
 // Fetches M3U playlists server-side to avoid CORS.
 // Special case: la.drmlive.net uses Cloudflare JA3 bot-detection that blocks
 // Node.js undici (fetch) but allows curl/OpenSSL, so we shell out to curl for
@@ -53,11 +69,15 @@ export default async function handler(req, res) {
         return res.status(502).end('Playlist server returned unexpected content')
       }
 
+      const isStream = !isMpd && !isM3uPlaylist && stdout?.startsWith('#EXTM3U')
       const ct = isMpd ? 'application/dash+xml'
-               : isM3uPlaylist ? 'audio/x-mpegurl'
-               : (stdout?.startsWith('#EXTM3U') ? 'audio/x-mpegurl' : 'application/octet-stream')
+               : (isM3uPlaylist || isStream) ? 'audio/x-mpegurl'
+               : 'application/octet-stream'
+      // Rewrite relative segment URLs in stream M3U8s so mobile players resolve
+      // segments against the origin CDN, not the proxy URL.
+      const body = isStream ? rewriteM3u8Urls(stdout, targetUrl) : (stdout || '')
       res.setHeader('Content-Type', ct)
-      return res.status(200).send(stdout || '')
+      return res.status(200).send(body)
     } catch (err) {
       return res.status(502).end('Curl fetch failed: ' + err.message)
     }
