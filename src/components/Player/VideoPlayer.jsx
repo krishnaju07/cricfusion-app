@@ -527,6 +527,7 @@ export default function VideoPlayer({ channel, onLockChange, onBack }) {
           err.code === 6001  ? 'DRM init failed — ClearKey config issue.' :
           err.code === 6002  ? 'DRM licence request failed.' :
           err.code === 6003  ? 'DRM licence rejected — key mismatch.' :
+          (err.code === 1001 && httpStatus === 403) ? 'Stream requires a subscription (access denied).' :
           (err.code === 1001 && httpStatus === 400) ? 'Stream is offline or not broadcasting right now.' :
           err.code === 1001  ? 'Network error — CDN unreachable.' :
           err.code === 1002  ? 'Network timeout — check your connection.' :
@@ -635,6 +636,7 @@ export default function VideoPlayer({ channel, onLockChange, onBack }) {
             err.code === 6002  ? 'DRM licence request failed.' :
             err.code === 6003  ? 'DRM licence rejected — key mismatch.' :
             err.code === 4001  ? 'Stream failed — invalid manifest format.' :
+            (err.code === 1001 && httpStatus2 === 403) ? 'Stream requires a subscription (access denied).' :
             (err.code === 1001 && httpStatus2 === 400) ? 'Stream is offline or not broadcasting right now.' :
             err.code === 1001  ? 'Network error — CDN unreachable.' :
             err.code === 3016  ? 'Segment fetch failed — token may be expired.' :

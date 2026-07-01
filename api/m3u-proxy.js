@@ -80,6 +80,12 @@ export default async function handler(req, res) {
         return res.status(502).end('Playlist server returned unexpected content')
       }
 
+      // MPD response that isn't XML = auth rejection (e.g. "Access denied." from JioTV+/TataPlay)
+      // Return 403 so the player shows a meaningful error instead of "invalid manifest format".
+      if (isMpd && stdout && !stdout.includes('<MPD') && !stdout.includes('<?xml')) {
+        return res.status(403).end(stdout.trim().slice(0, 200) || 'Access denied')
+      }
+
       const isStream = !isMpd && !isM3uPlaylist && stdout?.startsWith('#EXTM3U')
       const ct = isMpd ? 'application/dash+xml'
                : (isM3uPlaylist || isStream) ? 'audio/x-mpegurl'
