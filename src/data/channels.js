@@ -84,23 +84,17 @@ export function mapApiChannel(key, apiData, id) {
   }
 }
 
-// ── Dynamic per-channel API (japiweb.vercel.app/api/main?id=... for s1-s5,
-//    newwwwapiiiiii.vercel.app/main?id=... for others) ────────────────────────
+// ── Dynamic per-channel API (japiweb.vercel.app/api/main?id=... for s1-s5) ──
 // Each entry is fetched individually; SW proxies via /cf-dynamic?id=...
 // Response shape: { id, name, Bearer, url, k1, k2 }
 
-export const DYNAMIC_CHANNEL_IDS = ['willow', 'e1s4', 's1', 's2', 's3', 's4', 's5']
+export const DYNAMIC_CHANNEL_IDS = ['s1', 's2', 's3', 's4', 's5']
 
 const DYNAMIC_META = {
   willow: {
     name: 'Willow TV',       logo: 'WLW',  category: 'cricket',
     language: 'English', badge: 'HD',  viewers: '750K',
     thumbnail: T('1508098682722-e99c43a406b2'),
-  },
-  e1s4: {
-    name: null,              logo: 'E1S4', category: 'multi',
-    language: 'English', badge: 'HD',  viewers: '350K',
-    thumbnail: T('1461896836934-ffe607ba8211'),
   },
   s1: {
     name: 'Sony Ten 1',      logo: 'ST1',  category: 'cricket',

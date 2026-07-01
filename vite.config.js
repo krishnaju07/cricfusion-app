@@ -546,9 +546,46 @@ function iptvDevProxy() {
   }
 }
 
+// Dev-time proxy for /api/cf-dynamic — runs the Vercel handler locally
+// (needed so id=all and japiweb ids resolve the same way as prod)
+function dynamicDevProxy() {
+  return {
+    name: 'dynamic-api-dev-proxy',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        if (!req.url?.startsWith('/api/cf-dynamic')) return next()
+        res.setHeader('Access-Control-Allow-Origin', '*')
+        if (req.method === 'OPTIONS') { res.statusCode = 204; return res.end() }
+        try {
+          const reqUrl = new URL(req.url, 'http://localhost')
+          const handlerUrl = pathToFileURL(nodePath.join(process.cwd(), 'api', 'cf-dynamic.js')).href + `?t=${Date.now()}`
+          const mod = await import(handlerUrl)
+          const fakeReq = {
+            method: req.method,
+            headers: { referer: 'http://localhost:5173' },
+            query: Object.fromEntries(reqUrl.searchParams),
+          }
+          const fakeRes = {
+            _status: 200,
+            status(c) { this._status = c; return this },
+            end(b) { res.statusCode = this._status; res.end(b) },
+            send(b) { res.statusCode = this._status; res.end(b) },
+            json(b) { res.setHeader('Content-Type', 'application/json'); res.statusCode = this._status; res.end(JSON.stringify(b)) },
+            setHeader(k, v) { res.setHeader(k, v) },
+          }
+          await mod.default(fakeReq, fakeRes)
+        } catch (e) {
+          console.error('[dynamic-api-dev]', e)
+          res.statusCode = 500; res.end('dev error: ' + e.message)
+        }
+      })
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), sonyLivDevProxy(), m3uDevProxy(), tpLicenseDevProxy(), tpWvLicenseDevProxy(), tpMpdProxyDev(), tpApiDevProxy(), fifaDevProxy(), iptvDevProxy(), famelackDevProxy(), footballapiDevProxy(), drmliveCkDevProxy()],
+  plugins: [react(), sonyLivDevProxy(), m3uDevProxy(), tpLicenseDevProxy(), tpWvLicenseDevProxy(), tpMpdProxyDev(), tpApiDevProxy(), fifaDevProxy(), iptvDevProxy(), famelackDevProxy(), footballapiDevProxy(), drmliveCkDevProxy(), dynamicDevProxy()],
   build: {
     chunkSizeWarningLimit: 1000,
   },
@@ -573,11 +610,6 @@ export default defineConfig({
         target: 'https://raw.githubusercontent.com',
         changeOrigin: true,
         rewrite: () => '/drmlive/sliv-live-events/main/sonyliv.json',
-      },
-      '/api/cf-dynamic': {
-        target: 'https://newwwwapiiiiii.vercel.app',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/cf-dynamic/, '/main'),
       },
       '/fc-cdn': {
         target:       'https://in-mc-fblive.fancode.com',

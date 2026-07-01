@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useStore } from '../../store/useStore'
 import { categories } from '../../data/channels'
@@ -12,16 +12,36 @@ export default function CategoryTabs() {
     ...(m3uUrl || m3uContent ? [{ id: 'playlist', label: 'Playlist', icon: '📋' }] : []),
   ]
 
-  const counts = useMemo(() => buildCategoryCounts(channels), [channels])
+  const counts     = useMemo(() => buildCategoryCounts(channels), [channels])
+  const stripRef   = useRef(null)
+  const tabRefs    = useRef({})
+
+  // Scroll the active tab into view inside the horizontal strip whenever it changes.
+  useEffect(() => {
+    const el        = tabRefs.current[activeCategory]
+    const container = stripRef.current
+    if (!el || !container) return
+
+    const elLeft   = el.offsetLeft
+    const elRight  = elLeft + el.offsetWidth
+    const padded   = 16 // keep some breathing room at edges
+
+    if (elLeft - padded < container.scrollLeft) {
+      container.scrollTo({ left: elLeft - padded, behavior: 'smooth' })
+    } else if (elRight + padded > container.scrollLeft + container.clientWidth) {
+      container.scrollTo({ left: elRight + padded - container.clientWidth, behavior: 'smooth' })
+    }
+  }, [activeCategory])
 
   return (
-    <div className="flex gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+    <div ref={stripRef} className="flex gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
       {tabs.map((cat) => {
         const active = activeCategory === cat.id
         const count  = counts[cat.id] || 0
         return (
           <motion.button
             key={cat.id}
+            ref={(el) => { tabRefs.current[cat.id] = el }}
             whileTap={{ scale: 0.9 }}
             onClick={() => setActiveCategory(cat.id)}
             className="relative flex-shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-bold whitespace-nowrap"

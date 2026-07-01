@@ -148,8 +148,9 @@ export const useStore = create((set, get) => ({
     // resolves; commit() re-merges in a stable order so a slow endpoint never
     // blocks the others from rendering.
     const sources = {
-      wc2026:   [],
-      dynamic:  [],
+      wc2026:     [],
+      dynamic:    [],
+      dynamicAll: [],
       fifa:     [],
       fancode:  [],
       sonyliv:  [],
@@ -161,7 +162,7 @@ export const useStore = create((set, get) => ({
       tamil:    [],
     }
     // Fixed render order — independent of which fetch finishes first.
-    const ORDER = ['wc2026', 'dynamic', 'fifa', 'fancode', 'sonyliv', 'starsony', 'drmlive', 'tp', 'm3u', 'sports', 'tamil']
+    const ORDER = ['wc2026', 'dynamic', 'dynamicAll', 'fifa', 'fancode', 'sonyliv', 'starsony', 'drmlive', 'tp', 'm3u', 'sports', 'tamil']
 
     const commit = (extra = {}) => {
       const allChannels = [
@@ -270,6 +271,19 @@ export const useStore = create((set, get) => ({
         }).catch((e) => console.warn('Dynamic channel load failed:', e))
       )
     })
+
+    // ── Full dynamic channel list (newwwwapiiiiii /main, no id filter) ──
+    // One request returns every channel upstream has (Willow, TNT, beIN, Sky,
+    // F1, TSN, …) instead of guessing individual ids one at a time.
+    tasks.push(
+      fetch(dynUrl('all')).then((r) => r.text()).then((text) => {
+        const data = decode(text, swActive)
+        sources.dynamicAll = (Array.isArray(data) ? data : [])
+          .filter((d) => d?.url || d?.streamUrl)
+          .map((d, i) => mapDynamicChannel(d, 2000 + i + 1, d.id))
+        commit()
+      }).catch((e) => console.warn('Dynamic channel list load failed:', e))
+    )
 
     // ── la.drmlive.net playlist (Cricket, FIFA WC 2026, Sony, Willow, ICC TV…) ──
     // Routed through /api/m3u-proxy so the Tivimate User-Agent is injected server-side,

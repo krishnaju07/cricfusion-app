@@ -8,9 +8,12 @@ export default async function handler(req, res) {
   if (!id) return res.status(400).end('Missing id')
 
   const isJapi = JAPIWEB_IDS.includes(id)
+  const isAll = id === 'all'
   const upstream = isJapi
     ? `https://japiweb.vercel.app/api/main?id=${encodeURIComponent(id)}`
-    : `https://newwwwapiiiiii.vercel.app/main?id=${encodeURIComponent(id)}`
+    : isAll
+      ? 'https://newwwwapiiiiii.vercel.app/main'
+      : `https://newwwwapiiiiii.vercel.app/main?id=${encodeURIComponent(id)}`
 
   const headers = isJapi
     ? {
