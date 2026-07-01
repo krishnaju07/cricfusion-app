@@ -34,8 +34,16 @@ export default function Watch() {
   const others = channels.filter((c) => c.key !== id && c.isLive)
   const sameCategory = others.filter((c) => c.category === channel?.category)
   const different   = others.filter((c) => c.category !== channel?.category)
-  const related      = [...sameCategory, ...different].slice(0, 12)
   const liveChannels = [...sameCategory, ...different]
+
+  // Rotate sameCategory so the channel immediately AFTER the current one appears
+  // first in the "More" grid — card 0 is always "Up Next".
+  const allSameCat = channels.filter((c) => c.isLive && c.category === channel?.category)
+  const catIdx = allSameCat.findIndex((c) => c.key === id)
+  const rotatedSame = catIdx >= 0
+    ? [...sameCategory.slice(catIdx), ...sameCategory.slice(0, catIdx)]
+    : sameCategory
+  const related = [...rotatedSame, ...different].slice(0, 12)
 
   // Ordered list including current channel (for swipe prev/next)
   const navList = channel ? [channel, ...sameCategory, ...different] : liveChannels
@@ -334,9 +342,20 @@ export default function Watch() {
                 </button>
               </div>
 
-              {/* Card grid */}
+              {/* Card grid — first card is always the next channel */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {related.map((ch, i) => <ChannelCard key={ch.key} channel={ch} index={i} />)}
+                {related.map((ch, i) => (
+                  i === 0 ? (
+                    <div key={ch.key} className="relative">
+                      <div className="absolute -top-1.5 left-2 z-10 flex items-center gap-0.5 bg-brand-500 text-black text-[9px] font-black px-1.5 py-0.5 rounded-full leading-none pointer-events-none">
+                        ▶ Next
+                      </div>
+                      <ChannelCard channel={ch} index={0} />
+                    </div>
+                  ) : (
+                    <ChannelCard key={ch.key} channel={ch} index={i} />
+                  )
+                ))}
               </div>
             </motion.div>
           )}
