@@ -441,6 +441,23 @@ export default function VideoPlayer({ channel, onLockChange, onBack }) {
         })
       }
 
+      // Drmlive channels: the MPD or HLS manifest may embed absolute drmlive.net URLs
+      // (BaseURL, Location, segment refs). Browsers are JA3-blocked by Cloudflare on
+      // those domains, so we intercept every MANIFEST/SEGMENT request Shaka makes and
+      // re-route drmlive.net URIs through our server proxy (curl/OpenSSL on Vercel).
+      // LICENSE requests are already handled by /api/drmlive-ck — don't touch those.
+      const DRMLIVE_DOMAIN_RE = /^https:\/\/(?:la|mix|bd|now)\.drmlive\.net\//
+      if (channel.url.includes('drmlive.net')) {
+        player.getNetworkingEngine().registerRequestFilter((type, request) => {
+          const { MANIFEST, SEGMENT } = shaka.net.NetworkingEngine.RequestType
+          if (type === MANIFEST || type === SEGMENT) {
+            request.uris = request.uris.map((uri) =>
+              DRMLIVE_DOMAIN_RE.test(uri) ? `/api/m3u-proxy?url=${encodeURIComponent(uri)}` : uri
+            )
+          }
+        })
+      }
+
       // ClearKey channels: two-phase response filter.
       // MANIFEST phase: strip Widevine/PlayReady XML + inject ClearKey ContentProtection.
       // SEGMENT phase:  strip Widevine PSSH boxes from binary MP4 init segments so Shaka
