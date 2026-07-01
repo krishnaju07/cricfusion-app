@@ -48,7 +48,17 @@ export default async function handler(req, res) {
   // mix.drmlive.net activation endpoint also requires TiviMate UA (Chrome UA returns 543 Unauthorized).
   const useCurl = targetUrl.includes('la.drmlive.net') ||
                   targetUrl.includes('drmlive.net/tp/') ||
-                  targetUrl.includes('mix.drmlive.net')
+                  targetUrl.includes('mix.drmlive.net') ||
+                  targetUrl.includes('bd.drmlive.net') ||
+                  targetUrl.includes('now.drmlive.net')
+
+  // Zee5 channels (#EXTVLCOPT:http-user-agent=Chrome UA in playlist) need Chrome UA
+  // because DRMLive transparently proxies Zee5 CDN which checks the User-Agent.
+  // All other drmlive URLs use TiviMate UA.
+  const isZee5 = targetUrl.includes('/tp/zee5/')
+  const curlUA = isZee5
+    ? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36'
+    : 'TiviMate/4.6.0 (Android)'
 
   // Validate #EXTM3U only for known M3U playlist endpoints.
   // MPD manifests, activation endpoints, and stream manifests skip this check.
@@ -59,7 +69,7 @@ export default async function handler(req, res) {
     try {
       const { stdout } = await execFileAsync('curl', [
         '-s', '-L',
-        '-A', 'TiviMate/4.6.0 (Android)',
+        '-A', curlUA,
         '--max-time', '10',
         '--connect-timeout', '6',
         targetUrl,

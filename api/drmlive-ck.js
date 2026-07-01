@@ -1,6 +1,12 @@
-// Proxies ClearKey license requests to la.drmlive.net/tp/sling_ck.
+// Proxies ClearKey license requests to drmlive.net endpoints.
 // Shaka sends a POST with a JSON key-request body; this forwards it upstream
-// and returns the ClearKey JSON response, bypassing browser CORS restrictions.
+// and returns the ClearKey JSON response, bypassing browser CORS + JA3 restrictions.
+//
+// ?url=<encoded>  — full license server URL (must be on an allowed drmlive domain)
+// ?id=<id>        — backward-compat: forwards to la.drmlive.net/tp/sling_ck?id=<id>
+
+const ALLOWED_HOSTS = ['la.drmlive.net', 'mix.drmlive.net', 'now.drmlive.net', 'bd.drmlive.net', 'jt.drmlive.net']
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
@@ -8,8 +14,21 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') { res.statusCode = 204; return res.end() }
 
-  const id = req.query.id
-  if (!id) return res.status(400).json({ error: 'Missing id parameter' })
+  let licenseUrl
+  if (req.query.url) {
+    let parsed
+    try { parsed = new URL(decodeURIComponent(req.query.url)) } catch {
+      return res.status(400).json({ error: 'Invalid url parameter' })
+    }
+    if (!ALLOWED_HOSTS.includes(parsed.hostname)) {
+      return res.status(403).json({ error: 'Domain not allowed' })
+    }
+    licenseUrl = parsed.href
+  } else if (req.query.id) {
+    licenseUrl = `https://la.drmlive.net/tp/sling_ck?id=${encodeURIComponent(req.query.id)}`
+  } else {
+    return res.status(400).json({ error: 'Missing url or id parameter' })
+  }
 
   let body
   if (req.method === 'POST') {
@@ -20,7 +39,7 @@ export default async function handler(req, res) {
 
   let resp
   try {
-    resp = await fetch(`https://la.drmlive.net/tp/sling_ck?id=${encodeURIComponent(id)}`, {
+    resp = await fetch(licenseUrl, {
       method: req.method,
       headers: {
         'User-Agent': 'Tivimate/4.6.0 Android/12',

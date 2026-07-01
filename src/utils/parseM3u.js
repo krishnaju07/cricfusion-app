@@ -63,8 +63,12 @@ function nameToCategory(name) {
 // e.g. "14eeabf30c14b7fbf3008c03099ce011:17d2ac8dbc5429bd70af3433aa12158d"
 const INLINE_CK_RE = /^[0-9a-f]{32}:[0-9a-f]{32}$/i
 
+// All drmlive.net subdomains that require server-side proxying (JA3/UA checks).
+const DRMLIVE_DOMAINS = ['la.drmlive.net', 'mix.drmlive.net', 'bd.drmlive.net', 'now.drmlive.net']
+const isDrmlive = (url) => url && DRMLIVE_DOMAINS.some((d) => url.includes(d))
+
 // Parse an M3U text into raw channel objects.
-// Handles #EXTINF, #KODIPROP license key/type, and the stream URL line.
+// Handles #EXTINF, #KODIPROP license key/type, #EXTVLCOPT user-agent, and the stream URL line.
 // Strips IPTV pipe-header suffixes (|key=val) from URLs.
 export function parseM3u(text) {
   const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
@@ -77,11 +81,13 @@ export function parseM3u(text) {
       const group       = line.match(/group-title="([^"]*)"/)?.[1] || 'General'
       const tvgId       = line.match(/tvg-id="([^"]*)"/)?.[1] || ''
       const name        = line.match(/,(.+)$/)?.[1]?.trim() || 'Unknown'
-      meta = { logo, group, tvgId, name, licenseServer: null, licenseType: null }
+      meta = { logo, group, tvgId, name, licenseServer: null, licenseType: null, extvlcUa: null }
     } else if (line.startsWith('#KODIPROP:inputstream.adaptive.license_type=') && meta) {
       meta.licenseType = line.replace('#KODIPROP:inputstream.adaptive.license_type=', '').trim()
     } else if (line.startsWith('#KODIPROP:inputstream.adaptive.license_key=') && meta) {
       meta.licenseServer = line.replace('#KODIPROP:inputstream.adaptive.license_key=', '').trim()
+    } else if (line.startsWith('#EXTVLCOPT:http-user-agent=') && meta) {
+      meta.extvlcUa = line.replace('#EXTVLCOPT:http-user-agent=', '').trim()
     } else if (!line.startsWith('#') && meta) {
       const url = line.split('|')[0].trim()
       if (url) {
@@ -113,7 +119,7 @@ function resolveDrm(ch) {
     let id = null
     try { id = new URL(ls).searchParams.get('id') } catch {}
     const licenseServer = id ? `/api/drmlive-ck?id=${encodeURIComponent(id)}` : ls
-    const url = ch.url.includes('la.drmlive.net')
+    const url = isDrmlive(ch.url)
       ? `/api/m3u-proxy?url=${encodeURIComponent(ch.url)}`
       : ch.url
     return { url, clearKey: null, licenseServer, drmSystem: 'clearkey', reqHeaders: null }
@@ -133,17 +139,21 @@ function resolveDrm(ch) {
     return { url: ch.url, clearKey: null, licenseServer: ls || null, drmSystem: 'widevine', reqHeaders: null }
   }
 
-  // 5. Generic URL-based ClearKey license server (mix.drmlive.net, etc.)
+  // 5. Generic URL-based ClearKey license server.
+  // Proxy both the stream URL and the license server when on drmlive domains —
+  // browser TLS fingerprint is blocked (JA3) and CORS headers are absent.
   if (ls && ls.startsWith('http')) {
-    // Proxy stream URL if it's on a DRMLive domain (browser TLS fingerprint blocked)
-    const url = (ch.url.includes('la.drmlive.net') || ch.url.includes('mix.drmlive.net'))
+    const url = isDrmlive(ch.url)
       ? `/api/m3u-proxy?url=${encodeURIComponent(ch.url)}`
       : ch.url
-    return { url, clearKey: null, licenseServer: ls, drmSystem: 'clearkey', reqHeaders: null }
+    const licenseServer = isDrmlive(ls)
+      ? `/api/drmlive-ck?url=${encodeURIComponent(ls)}`
+      : ls
+    return { url, clearKey: null, licenseServer, drmSystem: 'clearkey', reqHeaders: null }
   }
 
-  // 6. No DRM / plain HLS — proxy if stream is on a DRMLive domain
-  if (ch.url.includes('la.drmlive.net') || ch.url.includes('mix.drmlive.net')) {
+  // 6. No DRM / plain HLS — proxy if stream is on a drmlive domain (TiviMate UA required)
+  if (isDrmlive(ch.url)) {
     const url = `/api/m3u-proxy?url=${encodeURIComponent(ch.url)}`
     return { url, clearKey: null, licenseServer: null, drmSystem: null, reqHeaders: null }
   }
