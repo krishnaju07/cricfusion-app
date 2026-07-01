@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { Heart, ChevronRight } from 'lucide-react'
 import HeroSection from '../components/UI/HeroSection'
@@ -350,29 +350,63 @@ export default function Home() {
       </div>
 
       {/* Quality filter strip */}
-      <div className="flex items-center gap-2 px-4 md:px-6 pb-3">
-        <span className="text-white/25 text-[11px] font-semibold uppercase tracking-widest flex-shrink-0">Quality</span>
-        <div className="flex gap-1.5">
-          {QUALITY_FILTERS.map(({ label, value }) => (
-            <button
-              key={label}
-              onClick={() => setQualityFilter(value)}
-              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
-                qualityFilter === value
-                  ? 'bg-brand-500 border-brand-500 text-black'
-                  : 'bg-white/[0.05] border-white/[0.08] text-white/40 hover:text-white hover:border-white/20'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        {qualityFilter && (
-          <span className="ml-auto text-white/30 text-xs">
-            {filtered.length} channel{filtered.length !== 1 ? 's' : ''}
-          </span>
-        )}
-      </div>
+      {(() => {
+        // Compute counts from the pre-quality-filtered list (category + search already applied)
+        const preQuality = (() => {
+          let list = channels
+          if (activeCategory === 'fancode')       list = list.filter((c) => c.key?.startsWith('fc_'))
+          else if (activeCategory === 'sonyliv')  list = list.filter((c) => c.key?.startsWith('sl_'))
+          else if (activeCategory === 'tataplay') list = list.filter((c) => c.key?.startsWith('tp_'))
+          else if (activeCategory !== 'all')      list = list.filter((c) => c.category === activeCategory)
+          if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase()
+            list = list.filter((c) => c.name?.toLowerCase().includes(q) || c.currentMatch?.toLowerCase().includes(q) || c.category?.toLowerCase().includes(q))
+          }
+          return list
+        })()
+        const qCounts = {
+          null: preQuality.length,
+          HD: preQuality.filter((c) => { const b = c.badge?.toUpperCase(); return b === 'HD' || b === '1080P' || b === '720P' }).length,
+          '4K': preQuality.filter((c) => c.badge?.toUpperCase() === '4K').length,
+          '2K': preQuality.filter((c) => c.badge?.toUpperCase() === '2K').length,
+        }
+        return (
+          <div className="flex items-center gap-2 px-4 md:px-6 pb-3">
+            <span className="text-white/25 text-[11px] font-semibold uppercase tracking-widest flex-shrink-0">Quality</span>
+            <div className="flex gap-1.5">
+              {QUALITY_FILTERS.map(({ label, value }) => {
+                const cnt = qCounts[value]
+                return (
+                  <button
+                    key={label}
+                    onClick={() => setQualityFilter(value)}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
+                      qualityFilter === value
+                        ? 'bg-brand-500 border-brand-500 text-black'
+                        : cnt === 0
+                        ? 'bg-white/[0.02] border-white/[0.04] text-white/20 cursor-default'
+                        : 'bg-white/[0.05] border-white/[0.08] text-white/40 hover:text-white hover:border-white/20'
+                    }`}
+                    disabled={cnt === 0 && value !== null}
+                  >
+                    {label}
+                    {value !== null && cnt > 0 && (
+                      <span className={`ml-1 text-[9px] font-black ${qualityFilter === value ? 'text-black/60' : 'text-white/25'}`}>
+                        {cnt}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+            {qualityFilter && (
+              <span className="ml-auto text-white/30 text-xs">
+                {filtered.length} channel{filtered.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Favourites row */}
       {favoriteChannels.length > 0 && activeCategory === 'all' && !searchQuery.trim() && (

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../../store/useStore'
 import { Users, Search, X, ChevronDown, ChevronRight } from 'lucide-react'
+import { VPN_FLAG, VPN_NAME } from '../../constants/channelMeta'
 
 const SPORT_CATS = [
   { id: 'all',        label: 'All',      icon: '🔥' },
@@ -22,9 +23,6 @@ const SPORT_CATS = [
 // order for "All" grouped view
 const GROUP_ORDER = ['fifa2026','starsony','cricket','football','tennis','basketball','formula1','boxing','multi','iptvsports','tamil']
 const GROUP_META  = Object.fromEntries(SPORT_CATS.map((c) => [c.id, c]))
-
-const VPN_FLAG = { DE: '🇩🇪', AT: '🇦🇹', BE: '🇧🇪', SK: '🇸🇰', CZ: '🇨🇿', FR: '🇫🇷', IE: '🇮🇪', CA: '🇨🇦', SA: '🇸🇦', BR: '🇧🇷', TR: '🇹🇷', PL: '🇵🇱', SE: '🇸🇪', NO: '🇳🇴' }
-const VPN_NAME = { DE: 'Germany', AT: 'Austria', BE: 'Belgium', SK: 'Slovakia', CZ: 'Czech Republic', FR: 'France', IE: 'Ireland', CA: 'Canada', SA: 'Saudi Arabia', BR: 'Brazil', TR: 'Turkey', PL: 'Poland', SE: 'Sweden', NO: 'Norway' }
 
 // ── Channel row ───────────────────────────────────────────────────────────────
 function ChannelRow({ ch, isActive, isSameCat, activeRef, onClick }) {

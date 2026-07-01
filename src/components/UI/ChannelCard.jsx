@@ -1,10 +1,8 @@
 import { useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Users, Play } from 'lucide-react'
-
-const VPN_FLAG = { DE: '🇩🇪', AT: '🇦🇹', BE: '🇧🇪', SK: '🇸🇰', CZ: '🇨🇿', FR: '🇫🇷', IE: '🇮🇪', CA: '🇨🇦', SA: '🇸🇦', BR: '🇧🇷', TR: '🇹🇷', PL: '🇵🇱', SE: '🇸🇪', NO: '🇳🇴' }
-const VPN_NAME = { DE: 'Germany', AT: 'Austria', BE: 'Belgium', SK: 'Slovakia', CZ: 'Czech Republic', FR: 'France', IE: 'Ireland', CA: 'Canada', SA: 'Saudi Arabia', BR: 'Brazil', TR: 'Turkey', PL: 'Poland', SE: 'Sweden', NO: 'Norway' }
+import { Play } from 'lucide-react'
+import { VPN_FLAG, VPN_NAME, getChannelSource } from '../../constants/channelMeta'
 
 export default function ChannelCard({ channel, index = 0, animated = true }) {
   const navigate = useNavigate()
@@ -30,6 +28,15 @@ export default function ChannelCard({ channel, index = 0, animated = true }) {
   const entryProps = animated
     ? { initial: { opacity: 0, y: 18 }, animate: { opacity: 1, y: 0 }, transition: { delay: Math.min(index, 14) * 0.04, duration: 0.32, ease: 'easeOut' } }
     : {}
+
+  const source = getChannelSource(channel)
+
+  // Primary: always the channel name.
+  // Secondary: live match/event if it differs from the name; otherwise show source.
+  const primaryText = channel.name
+  const secondaryText = (channel.currentMatch && channel.currentMatch !== channel.name)
+    ? channel.currentMatch
+    : (source || channel.category || '')
 
   return (
     <motion.div
@@ -90,12 +97,8 @@ export default function ChannelCard({ channel, index = 0, animated = true }) {
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0.55, opacity: 0 }}
                   transition={{ type: 'spring', stiffness: 420, damping: 22 }}
-                  className="w-13 h-13 rounded-full flex items-center justify-center"
-                  style={{
-                    width: 52, height: 52,
-                    background: '#c8ff00',
-                    boxShadow: '0 0 36px rgba(200,255,0,0.55)',
-                  }}
+                  style={{ width: 52, height: 52, background: '#c8ff00', boxShadow: '0 0 36px rgba(200,255,0,0.55)', borderRadius: '50%' }}
+                  className="flex items-center justify-center"
                 >
                   <Play size={18} fill="#000" className="text-black ml-0.5" />
                 </motion.div>
@@ -112,7 +115,7 @@ export default function ChannelCard({ channel, index = 0, animated = true }) {
             </div>
           )}
 
-          {/* Top row badges */}
+          {/* Top-left: LIVE / OFFLINE badge */}
           <div className="absolute top-2.5 left-2.5 right-2.5 flex items-start justify-between z-20">
             {channel.status === 'down' ? (
               <span className="flex items-center gap-1 bg-red-900/80 text-red-300 text-[9px] font-black px-1.5 py-0.5 rounded tracking-wider">
@@ -124,6 +127,8 @@ export default function ChannelCard({ channel, index = 0, animated = true }) {
                 LIVE
               </span>
             ) : <span />}
+
+            {/* Top-right: quality + HQ + VPN badges */}
             <div className="flex items-center gap-1">
               {channel.status === 'hq' && (
                 <span className="text-[9px] font-black px-1.5 py-0.5 rounded backdrop-blur-sm bg-yellow-500/90 text-black">
@@ -149,7 +154,7 @@ export default function ChannelCard({ channel, index = 0, animated = true }) {
             </div>
           </div>
 
-          {/* Score */}
+          {/* Score (FIFA / live match) */}
           {channel.score && (
             <div className="absolute bottom-2 left-2.5 right-2.5">
               <span className="text-white/80 text-[11px] font-semibold line-clamp-1">{channel.score}</span>
@@ -159,9 +164,12 @@ export default function ChannelCard({ channel, index = 0, animated = true }) {
 
         {/* ── Card body ── */}
         <div className="px-3 pt-2.5 pb-3 space-y-1.5">
-          <p className="text-white font-semibold text-sm leading-snug line-clamp-2">
-            {channel.category === 'fifa2026' ? channel.name : channel.currentMatch}
+          {/* Channel name */}
+          <p className="text-white font-semibold text-sm leading-snug line-clamp-1">
+            {primaryText}
           </p>
+
+          {/* Match / source row */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 min-w-0">
               <div
@@ -172,15 +180,16 @@ export default function ChannelCard({ channel, index = 0, animated = true }) {
                   {channel.logo?.slice(0, 3)}
                 </span>
               </div>
-              <span className="text-white/35 text-xs truncate">
-                {channel.category === 'fifa2026' ? channel.currentMatch : channel.name}
+              <span className="text-white/40 text-xs truncate">
+                {secondaryText}
               </span>
             </div>
-            {channel.viewers && channel.viewers !== '—' && (
-              <div className="flex items-center gap-1 text-white/25 text-[11px] flex-shrink-0">
-                <Users size={9} />
-                {channel.viewers}
-              </div>
+
+            {/* Source pill */}
+            {source && (
+              <span className="flex-shrink-0 text-[8px] font-bold px-1.5 py-0.5 rounded bg-white/[0.07] text-white/30 border border-white/[0.06]">
+                {source}
+              </span>
             )}
           </div>
         </div>
@@ -194,9 +203,7 @@ export default function ChannelCard({ channel, index = 0, animated = true }) {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
               className="absolute inset-0 pointer-events-none rounded-2xl"
-              style={{
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.055) 0%, transparent 55%)',
-              }}
+              style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.055) 0%, transparent 55%)' }}
             />
           )}
         </AnimatePresence>
