@@ -9,6 +9,11 @@ import { IPTV_TAMIL_CHANNELS } from '../data/iptv-tamil'
 import { parseM3u, mapM3uChannel } from '../utils/parseM3u'
 import { isDevToolsOpen } from '../utils/devtools-guard'
 import { FEATURES } from '../config/features'
+import {
+  DYNAMIC_PROXY, FANCODE_PROXY, SONYLIV_PROXY, FIFA_PROXY, IPTV_PROXY,
+  CXFUT_PROXY, FOOTSTERS_PROXY, FOOTBALLAPI_PROXY,
+  STARSONY_URL, DRMLIVE_M3U, FANCODE_RAW, SONYLIV_RAW, JAPIWEB_RAW,
+} from '../constants/api'
 
 // Geo-locked German hosts (Sportdigital Fussball on t-online/Akamai).
 // DISABLED: routing these through /cf-geo only works with a residential German
@@ -22,18 +27,6 @@ function routeGeoChannel(ch) {
   return ch
 }
 
-const DYNAMIC_PROXY = '/cf-dynamic'   // SW → japiweb.vercel.app/api/main?id=... (s1-s5) or newwwwapiiiiii
-const FANCODE_PROXY = '/cf-fancode'   // SW → github drmlive/fancode-live-events
-const SONYLIV_PROXY = '/cf-sonyliv'   // SW → github drmlive/sliv-live-events
-const FIFA_PROXY    = '/cf-fifa'      // SW → /api/cf-fifa (server-side, Referer-locked)
-const IPTV_PROXY    = '/cf-iptv'      // SW → /api/cf-iptv (iptv-eldbert FIFA channels)
-const CXFUT_PROXY       = '/cf-cxfut'       // SW → /api/cf-cxfut (lchdxfootball premium.js HLS)
-const FOOTSTERS_PROXY   = '/cf-footsters'   // SW → /api/cf-footsters (footsters-live + footsters-tv redirect-resolved HLS)
-const FOOTBALLAPI_PROXY = '/cf-footballapi' // SW → /api/cf-footballapi (footballapi-delta — all FIFA streams, Origin-gated)
-const DRMLIVE_M3U = 'https://la.drmlive.net/tp/playlist' // routed via m3u-proxy (Tivimate UA, avoids bot detection)
-// Star/Sony Sports: Jio CDN DASH + ClearKey + short-lived token. CORS-open, so
-// fetched directly (no SW proxy needed).
-const STARSONY_URL  = 'https://sayan-json-4.pages.dev/Data/sports.json'
 
 // SW base64-encodes responses; decode back to JSON string.
 // Falls back to plain JSON when SW is active but an old SW version fell
@@ -147,11 +140,9 @@ export const useStore = create((set, get) => ({
     // (clients.claim() propagates async). Fall back to direct URLs so channels
     // always load; SW proxy kicks in on second+ page load.
     const swActive  = !!(navigator.serviceWorker?.controller)
-    const fanCodeUrl = swActive ? FANCODE_PROXY : 'https://raw.githubusercontent.com/drmlive/fancode-live-events/main/fancode.json'
-    const sonyLivUrl = swActive ? SONYLIV_PROXY : 'https://raw.githubusercontent.com/drmlive/sliv-live-events/main/sonyliv.json'
-    const dynUrl    = (id) => swActive
-      ? `${DYNAMIC_PROXY}?id=${id}`
-      : `https://japiweb.vercel.app/api/main?id=${id}`
+    const fanCodeUrl = swActive ? FANCODE_PROXY : FANCODE_RAW
+    const sonyLivUrl = swActive ? SONYLIV_PROXY : SONYLIV_RAW
+    const dynUrl    = (id) => swActive ? `${DYNAMIC_PROXY}?id=${id}` : JAPIWEB_RAW(id)
 
     // Per-source channel buckets. Each API writes its slice here as it
     // resolves; commit() re-merges in a stable order so a slow endpoint never
