@@ -172,7 +172,9 @@ export default function Account() {
       const act = parsed.find((ch) => ch.group === '1-Playlist-Activation')
       if (!act?.url) { setActivateStatus('error'); return }
       const ar = await fetch(`/api/m3u-proxy?url=${encodeURIComponent(act.url)}`, { cache: 'no-store' })
-      setActivateStatus(ar.ok ? 'done' : 'error')
+      const body = await ar.text()
+      // DRMLive activation returns a short MPD XML as confirmation — anything else is a failure
+      setActivateStatus((ar.ok && body.includes('<MPD')) ? 'done' : 'error')
     } catch {
       setActivateStatus('error')
     }
