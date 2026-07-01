@@ -50,7 +50,8 @@ export default async function handler(req, res) {
                   targetUrl.includes('drmlive.net/tp/') ||
                   targetUrl.includes('mix.drmlive.net') ||
                   targetUrl.includes('bd.drmlive.net') ||
-                  targetUrl.includes('now.drmlive.net')
+                  targetUrl.includes('now.drmlive.net') ||
+                  targetUrl.includes('jt.drmlive.net')
 
   // Zee5 channels (#EXTVLCOPT:http-user-agent=Chrome UA in playlist) need Chrome UA
   // because DRMLive transparently proxies Zee5 CDN which checks the User-Agent.

@@ -64,7 +64,7 @@ function nameToCategory(name) {
 const INLINE_CK_RE = /^[0-9a-f]{32}:[0-9a-f]{32}$/i
 
 // All drmlive.net subdomains that require server-side proxying (JA3/UA checks).
-const DRMLIVE_DOMAINS = ['la.drmlive.net', 'mix.drmlive.net', 'bd.drmlive.net', 'now.drmlive.net']
+const DRMLIVE_DOMAINS = ['la.drmlive.net', 'mix.drmlive.net', 'bd.drmlive.net', 'now.drmlive.net', 'jt.drmlive.net']
 const isDrmlive = (url) => url && DRMLIVE_DOMAINS.some((d) => url.includes(d))
 
 // Parse an M3U text into raw channel objects.

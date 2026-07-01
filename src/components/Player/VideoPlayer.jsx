@@ -446,7 +446,7 @@ export default function VideoPlayer({ channel, onLockChange, onBack }) {
       // those domains, so we intercept every MANIFEST/SEGMENT request Shaka makes and
       // re-route drmlive.net URIs through our server proxy (curl/OpenSSL on Vercel).
       // LICENSE requests are already handled by /api/drmlive-ck — don't touch those.
-      const DRMLIVE_DOMAIN_RE = /^https:\/\/(?:la|mix|bd|now)\.drmlive\.net\//
+      const DRMLIVE_DOMAIN_RE = /^https:\/\/(?:la|mix|bd|now|jt)\.drmlive\.net\//
       if (channel.url.includes('drmlive.net')) {
         player.getNetworkingEngine().registerRequestFilter((type, request) => {
           const { MANIFEST, SEGMENT } = shaka.net.NetworkingEngine.RequestType
