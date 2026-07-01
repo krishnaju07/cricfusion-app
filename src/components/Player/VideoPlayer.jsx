@@ -47,6 +47,7 @@ export default function VideoPlayer({ channel, onLockChange, onBack }) {
   // Reset recovery budget when switching to a different channel (not on token reloads).
   useEffect(() => { recoverAttempts.current = 0 }, [channel?.id])
 
+  const [centerFlash, setCenterFlash]     = useState(null)  // 'play' | 'pause' — brief icon feedback
   const [streamTracks, setStreamTracks] = useState([])   // detected text tracks from stream
   const [castAvailable, setCastAvailable]   = useState(false)
   const [casting, setCasting]               = useState(false)
@@ -1217,16 +1218,15 @@ export default function VideoPlayer({ channel, onLockChange, onBack }) {
       lastTapX.current = clientX
       clickTimer.current = setTimeout(() => {
         clickTimer.current = null
-        // Single tap: toggle controls visibility
-        if (liveRef.current.showControls) {
-          clearTimeout(hideTimer.current)
-          update({ showControls: false })
-        } else {
-          showControlsTemporarily()
-        }
+        // Single tap: play/pause + brief icon flash + show controls
+        const willPause = !videoRef.current?.paused
+        togglePlay()
+        setCenterFlash(willPause ? 'pause' : 'play')
+        setTimeout(() => setCenterFlash(null), 650)
+        showControlsTemporarily()
       }, 220)
     }
-  }, [seek, showControlsTemporarily, update])
+  }, [seek, showControlsTemporarily, togglePlay])
 
   const qualityLevels = state.qualityLevels.length
     ? state.qualityLevels
@@ -1471,24 +1471,38 @@ export default function VideoPlayer({ channel, onLockChange, onBack }) {
               </div>
             </div>
 
-            {/* Center click zone — single tap: toggle controls | double tap: seek ±10s */}
+            {/* Center click zone — single tap: play/pause | double tap: seek ±10s */}
             <div className="absolute inset-0 cursor-pointer" onClick={handleCenterClick}>
               <AnimatePresence>
-                {!state.playing && !state.loading && (
+                {!state.playing && !state.loading && !centerFlash && (
                   <motion.div
                     initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 1.4, opacity: 0 }}
-                    className="absolute inset-0 flex items-center justify-center"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      clearTimeout(clickTimer.current)
-                      clickTimer.current = null
-                      togglePlay()
-                      showControlsTemporarily()
-                    }}
+                    className="absolute inset-0 flex items-center justify-center pointer-events-none"
                   >
                     <div className="w-20 h-20 bg-black/55 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/20">
                       <svg className="w-9 h-9 text-white ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Brief play/pause icon flash on tap */}
+              <AnimatePresence>
+                {centerFlash && (
+                  <motion.div
+                    key={centerFlash}
+                    initial={{ scale: 0.6, opacity: 1 }}
+                    animate={{ scale: 1.3, opacity: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.6, ease: 'easeOut' }}
+                    className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                  >
+                    <div className="w-20 h-20 bg-black/60 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/20">
+                      {centerFlash === 'pause'
+                        ? <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
+                        : <svg className="w-9 h-9 text-white ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                      }
                     </div>
                   </motion.div>
                 )}

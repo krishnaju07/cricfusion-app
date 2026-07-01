@@ -142,6 +142,80 @@ function GroupSection({ cat, channels, currentChannelId, activeRef, navigate, de
   )
 }
 
+// ── Search results (capped at 5, expandable) ─────────────────────────────────
+function SearchResults({ liveChannels, grouped, groupOrder, currentChannelId, currentChannel, activeRef, listRef, navigate, onClearFilters }) {
+  const [showAll, setShowAll] = useState(false)
+
+  // Reset "show all" whenever the result set changes
+  useEffect(() => { setShowAll(false) }, [liveChannels.length])
+
+  if (liveChannels.length === 0) {
+    return (
+      <div ref={listRef} className="flex-1 overflow-y-auto flex flex-col items-center justify-center py-12 text-center px-4">
+        <span className="text-3xl mb-3">📺</span>
+        <p className="text-white/25 text-xs">No channels match</p>
+        <button onClick={onClearFilters} className="mt-2 text-brand-400 text-xs">Clear filters</button>
+      </div>
+    )
+  }
+
+  if (grouped) {
+    return (
+      <div ref={listRef} className="flex-1 overflow-y-auto pt-1">
+        {groupOrder.map((cat) => (
+          <GroupSection
+            key={cat}
+            cat={cat}
+            channels={grouped[cat]}
+            currentChannelId={currentChannelId}
+            activeRef={activeRef}
+            navigate={navigate}
+            defaultOpen={cat === currentChannel?.category || cat === 'fifa2026' || cat === 'cricket'}
+          />
+        ))}
+      </div>
+    )
+  }
+
+  // Search / category-filtered flat list — cap at 5, show expand button
+  const LIMIT = 5
+  const visible = showAll ? liveChannels : liveChannels.slice(0, LIMIT)
+  const hidden  = liveChannels.length - LIMIT
+
+  return (
+    <div ref={listRef} className="flex-1 overflow-y-auto flex flex-col">
+      <div className="py-1.5 px-1 space-y-0.5">
+        {visible.map((ch) => (
+          <ChannelRow
+            key={ch.id}
+            ch={ch}
+            isActive={ch.key === currentChannelId}
+            isSameCat={currentChannel && ch.category === currentChannel.category}
+            activeRef={activeRef}
+            onClick={() => navigate(`/watch/${encodeURIComponent(ch.key)}`)}
+          />
+        ))}
+      </div>
+      {hidden > 0 && !showAll && (
+        <button
+          onClick={() => setShowAll(true)}
+          className="mx-3 mb-2 py-2 rounded-xl border border-white/[0.08] text-white/40 text-xs hover:text-white/70 hover:border-white/20 transition-colors"
+        >
+          Show {hidden} more
+        </button>
+      )}
+      {showAll && liveChannels.length > LIMIT && (
+        <button
+          onClick={() => setShowAll(false)}
+          className="mx-3 mb-2 py-1.5 text-white/25 text-xs hover:text-white/50 transition-colors"
+        >
+          Show less ↑
+        </button>
+      )}
+    </div>
+  )
+}
+
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 export default function Sidebar({ currentChannelId }) {
   const { isSidebarOpen, channels } = useStore()
@@ -250,8 +324,11 @@ export default function Sidebar({ currentChannelId }) {
                 className="w-full bg-white/[0.06] border border-white/[0.08] rounded-xl text-xs text-white placeholder-white/25 py-2 pl-7 pr-7 outline-none focus:border-brand-500/40 transition-colors"
               />
               {query && (
-                <button onClick={() => setQuery('')} className="absolute right-2.5 text-white/30 hover:text-white/60">
-                  <X size={12} />
+                <button
+                  onClick={() => setQuery('')}
+                  className="absolute right-2 flex items-center justify-center w-5 h-5 rounded-full bg-white/15 hover:bg-white/25 text-white/70 hover:text-white transition-all"
+                >
+                  <X size={10} />
                 </button>
               )}
             </div>
@@ -288,49 +365,17 @@ export default function Sidebar({ currentChannelId }) {
           </div>
 
           {/* ── Channel list ── */}
-          <div ref={listRef} className="flex-1 overflow-y-auto">
-            {liveChannels.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center px-4">
-                <span className="text-3xl mb-3">📺</span>
-                <p className="text-white/25 text-xs">No channels match</p>
-                <button
-                  onClick={() => { setQuery(''); setCatFilter('all') }}
-                  className="mt-2 text-brand-400 text-xs"
-                >
-                  Clear filters
-                </button>
-              </div>
-            ) : grouped ? (
-              /* Grouped collapsible sections */
-              <div className="pt-1">
-                {groupOrder.map((cat) => (
-                  <GroupSection
-                    key={cat}
-                    cat={cat}
-                    channels={grouped[cat]}
-                    currentChannelId={currentChannelId}
-                    activeRef={activeRef}
-                    navigate={navigate}
-                    defaultOpen={cat === currentChannel?.category || cat === 'fifa2026' || cat === 'cricket'}
-                  />
-                ))}
-              </div>
-            ) : (
-              /* Flat filtered list */
-              <div className="py-1.5 px-1 space-y-0.5">
-                {liveChannels.map((ch) => (
-                  <ChannelRow
-                    key={ch.id}
-                    ch={ch}
-                    isActive={ch.key === currentChannelId}
-                    isSameCat={currentChannel && ch.category === currentChannel.category}
-                    activeRef={activeRef}
-                    onClick={() => navigate(`/watch/${encodeURIComponent(ch.key)}`)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+          <SearchResults
+            liveChannels={liveChannels}
+            grouped={grouped}
+            groupOrder={groupOrder}
+            currentChannelId={currentChannelId}
+            currentChannel={currentChannel}
+            activeRef={activeRef}
+            listRef={listRef}
+            navigate={navigate}
+            onClearFilters={() => { setQuery(''); setCatFilter('all') }}
+          />
 
           {/* ── Footer ── */}
           <div className="px-3 py-2 border-t border-white/[0.06] flex items-center justify-between">

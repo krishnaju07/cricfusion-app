@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { Play, Radio } from 'lucide-react'
@@ -22,34 +22,57 @@ function MatchTitle({ title }) {
 
 const INTERVAL_MS = 6000
 
-// Featured channels pinned to the hero carousel, in display order (by channel id).
-const FEATURED_IDS = [1002, 1005, 1028, 1029, 407]
+// Priority categories for hero slot selection.
+const HERO_CATS = ['cricket', 'fifa2026', 'wc2026live', 'football', 'tennis', 'formula1', 'basketball', 'multi']
 
-// Per-id hero backdrop images (online sources). Keyed by channel id.
-const FEATURED_IMAGES = {
-  1002: 'https://images.unsplash.com/photo-1540747913346-19212a4b423f?auto=format&fit=crop&w=1600&q=80', // Star Sports 1 — cricket stadium
-  1005: 'https://images.unsplash.com/photo-1531415074968-036ba1b575da?auto=format&fit=crop&w=1600&q=80', // Star Sports 2 — cricket action
-  1028: 'https://images.unsplash.com/photo-1624555130581-1d9cca783bc0?auto=format&fit=crop&w=1600&q=80', // Sony LIV 1 — cricket pitch
-  1029: 'https://images.unsplash.com/photo-1593766827228-8737b4534aa6?auto=format&fit=crop&w=1600&q=80', // Sony LIV 2 — stadium lights
-  407:  'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=1600&q=80', // Fussball 1 — football stadium
+// Backdrop image per category (and generic fallback).
+const CAT_IMAGES = {
+  cricket:    'https://images.unsplash.com/photo-1540747913346-19212a4b423f?auto=format&fit=crop&w=1600&q=80',
+  fifa2026:   'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=1600&q=80',
+  wc2026live: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=1600&q=80',
+  football:   'https://images.unsplash.com/photo-1543326727-cf6c39e8f84c?auto=format&fit=crop&w=1600&q=80',
+  tennis:     'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?auto=format&fit=crop&w=1600&q=80',
+  formula1:   'https://images.unsplash.com/photo-1541773367336-d3f34b56e74e?auto=format&fit=crop&w=1600&q=80',
+  basketball: 'https://images.unsplash.com/photo-1546519638405-a9f1e9a4f7c5?auto=format&fit=crop&w=1600&q=80',
+  multi:      'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=1600&q=80',
+  default:    'https://images.unsplash.com/photo-1531415074968-036ba1b575da?auto=format&fit=crop&w=1600&q=80',
 }
 
 export default function HeroSection() {
-  const navigate    = useNavigate()
-  const channels    = useStore((s) => s.channels)
-  const liveList    = FEATURED_IDS
-    .map((id) => channels.find((c) => String(c.id) === String(id)))
-    .filter(Boolean)
+  const navigate = useNavigate()
+  const channels = useStore((s) => s.channels)
   const [idx, setIdx]         = useState(0)
   const [imgFailed, setImgFailed] = useState(false)
   const [paused, setPaused]   = useState(false)
   const touchStartX = useRef(null)
 
-  const total = liveList.length
-  const match = liveList[idx] ?? liveList[0]
-  const heroImg = match ? (FEATURED_IMAGES[match.id] ?? match.thumbnail) : null
+  // Pick the first live channel from each priority category (up to 5 slots).
+  const liveList = useMemo(() => {
+    const seen  = new Set()
+    const picks = []
+    for (const cat of HERO_CATS) {
+      if (picks.length >= 5) break
+      const ch = channels.find((c) => c.isLive && c.category === cat && !seen.has(c.key))
+      if (ch) { picks.push(ch); seen.add(ch.key) }
+    }
+    // Fill any remaining slots with any other live channels
+    for (const ch of channels) {
+      if (picks.length >= 5) break
+      if (ch.isLive && !seen.has(ch.key)) { picks.push(ch); seen.add(ch.key) }
+    }
+    return picks
+  }, [channels])
+
+  const total   = liveList.length
+  const match   = liveList[idx] ?? liveList[0]
+  const heroImg = match ? (CAT_IMAGES[match.category] ?? CAT_IMAGES.default) : null
 
   useEffect(() => { setImgFailed(false) }, [idx])
+
+  // Reset idx when liveList shrinks (e.g. on initial empty → populated transition)
+  useEffect(() => {
+    if (idx >= total && total > 0) setIdx(0)
+  }, [total, idx])
 
   const next = useCallback(() => setIdx((i) => (i + 1) % total), [total])
   const prev = useCallback(() => setIdx((i) => (i - 1 + total) % total), [total])
@@ -83,7 +106,7 @@ export default function HeroSection() {
       {/* ── Background: crossfade + Ken Burns zoom ── */}
       <AnimatePresence mode="sync">
         <motion.div
-          key={`bg-${match.id}`}
+          key={`bg-${match.key}`}
           className="absolute inset-0"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -109,7 +132,6 @@ export default function HeroSection() {
             style={{ background: 'linear-gradient(to top, #000 0%, rgba(0,0,0,0.72) 38%, rgba(0,0,0,0.18) 100%)' }} />
           <div className="absolute inset-0"
             style={{ background: 'linear-gradient(to right, rgba(0,0,0,0.75) 0%, transparent 62%)' }} />
-          {/* Subtle vignette on sides */}
           <div className="absolute inset-0"
             style={{ background: 'radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.35) 100%)' }} />
         </motion.div>
@@ -119,7 +141,7 @@ export default function HeroSection() {
       <div className="absolute inset-0 flex flex-col justify-end px-5 pb-6 md:px-10 md:pb-8">
         <AnimatePresence mode="wait">
           <motion.div
-            key={match.id}
+            key={match.key}
             initial={{ opacity: 0, y: 22 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
@@ -146,7 +168,7 @@ export default function HeroSection() {
             </div>
 
             {/* Match title */}
-            <MatchTitle title={match.currentMatch} />
+            <MatchTitle title={match.currentMatch || match.name} />
 
             {/* Score / description */}
             {(match.score || match.description) && (
@@ -159,7 +181,7 @@ export default function HeroSection() {
             <motion.button
               whileTap={{ scale: 0.95 }}
               whileHover={{ scale: 1.04, boxShadow: '0 6px 32px rgba(200,255,0,0.5)' }}
-              onClick={() => navigate(`/watch/${match.id}`)}
+              onClick={() => navigate(`/watch/${encodeURIComponent(match.key)}`)}
               className="flex items-center gap-2.5 text-black font-bold text-sm px-7 py-3 rounded-full"
               style={{
                 background: 'linear-gradient(135deg, #c8ff00 0%, #aadc00 100%)',
@@ -177,7 +199,7 @@ export default function HeroSection() {
           <div className="flex items-center gap-2 mt-5">
             {liveList.map((ch, i) => (
               <button
-                key={ch.id}
+                key={ch.key}
                 onClick={() => setIdx(i)}
                 className="relative h-[3px] rounded-full overflow-hidden transition-all duration-300"
                 style={{
@@ -191,7 +213,7 @@ export default function HeroSection() {
                     className="absolute inset-y-0 left-0 rounded-full"
                     style={{ background: '#c8ff00' }}
                     initial={{ width: '0%' }}
-                    animate={{ width: paused ? '100%' : '100%' }}
+                    animate={{ width: '100%' }}
                     transition={paused
                       ? { duration: 0 }
                       : { duration: INTERVAL_MS / 1000, ease: 'linear' }
