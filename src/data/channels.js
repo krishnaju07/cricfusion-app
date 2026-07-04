@@ -847,6 +847,31 @@ export const STATIC_CHANNELS = [
     url: 'https://hugh.cdn.rumble.cloud/live/gi29le7p/slot-139/bx1o-9vac_720p/chunklist.m3u8',
     clearKey: null, quality: ['Auto', '720p', '480p'],
   },
+  // NOTE: tokenized dishmt.slivcdn.com URLs — hardcoded, will go dead when the token expires.
+  {
+    id: 152, key: 'ten3hindivlc', name: 'Sony Ten 3 HD Hindi', category: 'cricket',
+    currentMatch: 'Sony Ten 3 HD Hindi — Live', thumbnail: T('1546519638405-a9f1e9a4f7c5'),
+    logo: 'T3HD', isLive: true, viewers: '—', badge: 'HD', language: 'Hindi',
+    description: 'Sony Ten 3 HD Hindi — Live', score: null,
+    url: 'https://dishmt.slivcdn.com/hls/live/2020591-b/TEN3HD/hdntl=exp=1783253944~acl=/*~id=17328806853328633332565215549785~data=hdntl~hmac=03f133583dec9616a86cafadc63f935855b77c5b21db23695a713ad4ec43b460/master_3500.m3u8',
+    clearKey: null, quality: ['Auto', '1080p', '720p', '480p'],
+  },
+  {
+    id: 153, key: 'sonysixvlc', name: 'Sony Six HD English', category: 'cricket',
+    currentMatch: 'Sony Six HD English — Live', thumbnail: T('1531415074968-036ba1b575da'),
+    logo: 'SIX', isLive: true, viewers: '—', badge: 'HD', language: 'English',
+    description: 'Sony Six HD English — Live', score: null,
+    url: 'https://dishmt.slivcdn.com/hls/live/2020593-b/SONYSIXHD/hdntl=exp=1783253944~acl=/*~id=17328806853328633332565215549785~data=hdntl~hmac=03f133583dec9616a86cafadc63f935855b77c5b21db23695a713ad4ec43b460/master_3500.m3u8',
+    clearKey: null, quality: ['Auto', '1080p', '720p', '480p'],
+  },
+  {
+    id: 154, key: 'ten4tamtelvlc', name: 'Sony Ten 4 HD Tamil/Telugu', category: 'cricket',
+    currentMatch: 'Sony Ten 4 HD Tamil/Telugu — Live', thumbnail: T('1595435741984-3a9a5f5ebe68'),
+    logo: 'T4HD', isLive: true, viewers: '—', badge: 'HD', language: 'Tamil',
+    description: 'Sony Ten 4 HD Tamil/Telugu — Live', score: null,
+    url: 'https://dishmt.slivcdn.com/hls/live/2020589-b/ten4hd/hdntl=exp=1783253944~acl=/*~id=17328806853328633332565215549785~data=hdntl~hmac=03f133583dec9616a86cafadc63f935855b77c5b21db23695a713ad4ec43b460/master_3500.m3u8',
+    clearKey: null, quality: ['Auto', '1080p', '720p', '480p'],
+  },
 ]
 
 // ── FIFA channel status map ───────────────────────────────────────────────────
