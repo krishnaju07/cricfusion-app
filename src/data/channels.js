@@ -88,7 +88,7 @@ export function mapApiChannel(key, apiData, id) {
 // Each entry is fetched individually; SW proxies via /cf-dynamic?id=...
 // Response shape: { id, name, Bearer, url, k1, k2 }
 
-export const DYNAMIC_CHANNEL_IDS = ['s1', 's2', 's3', 's4', 's5']
+export const DYNAMIC_CHANNEL_IDS = ['s1', 's2', 's3', 's4', 's5', 'e10s3']
 
 const DYNAMIC_META = {
   willow: {
@@ -120,6 +120,21 @@ const DYNAMIC_META = {
     name: 'Sony Ten 5',      logo: 'ST5',  category: 'cricket',
     language: 'English', badge: 'HD',  viewers: '620K',
     thumbnail: T('1568605117036-5fe5e7bab0b7'),
+  },
+  ten3: {
+    name: 'Sony Ten 3 Hindi', logo: 'ST3', category: 'cricket',
+    language: 'Hindi',   badge: 'HD',  viewers: '750K',
+    thumbnail: T('1546519638405-a9f1e9a4f7c5'),
+  },
+  willowios: {
+    name: 'Willow Sports',   logo: 'WLW',  category: 'cricket',
+    language: 'English', badge: 'HD',  viewers: '700K',
+    thumbnail: T('1508098682722-e99c43a406b2'),
+  },
+  e10s3: {
+    name: 'Willow Sports (Ads-Free)', logo: 'WLWA', category: 'cricket',
+    language: 'English', badge: 'HD',  viewers: '500K',
+    thumbnail: T('1508098682722-e99c43a406b2'),
   },
 }
 
