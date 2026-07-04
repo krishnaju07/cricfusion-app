@@ -880,6 +880,7 @@ export const STATIC_CHANNELS = [
 // 'down' = not working currently (shown last, visually dimmed)
 // Keys must match the `key` field on the channel object.
 export const FIFA_STATUS = {
+  fifa_dyn_fussball1uhd: 'pinned', // hard to find otherwise — always show first
   trt2kfhd:    'hq',   // 2K FHD — Turkish HLS, confirmed working
   foxusa:      'ok',
   fifaprime1:  'ok',
@@ -888,12 +889,12 @@ export const FIFA_STATUS = {
   beeline319:  'ok',
 }
 
-// Priority for sorting: hq=0, ok=1, down=2
+// Priority for sorting: pinned=-1, hq=0, ok=1, down=2
 export function fifaStatusOf(key) {
   return FIFA_STATUS[key] ?? 'ok'
 }
 
-export const FIFA_SORT_WEIGHT = { hq: 0, ok: 1, down: 2 }
+export const FIFA_SORT_WEIGHT = { pinned: -1, hq: 0, ok: 1, down: 2 }
 
 export const categories = [
   { id: 'all',        label: 'Trending',     icon: '🔥' },

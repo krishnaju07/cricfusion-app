@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { Play, Radio } from 'lucide-react'
 import { useStore } from '../../store/useStore'
+import { fifaStatusOf, FIFA_SORT_WEIGHT } from '../../data/channels'
 
 function MatchTitle({ title }) {
   const parts = title.split(/(\bvs\.?\b)/i)
@@ -52,7 +53,14 @@ export default function HeroSection() {
     const picks = []
     for (const cat of HERO_CATS) {
       if (picks.length >= 5) break
-      const ch = channels.find((c) => c.isLive && c.category === cat && !seen.has(c.key))
+      let ch
+      if (cat === 'fifa2026' || cat === 'wc2026live') {
+        // Respect the pinned/hq/ok priority used elsewhere for FIFA channels.
+        const candidates = channels.filter((c) => c.isLive && c.category === cat && !seen.has(c.key))
+        ch = candidates.sort((a, b) => FIFA_SORT_WEIGHT[fifaStatusOf(a.key)] - FIFA_SORT_WEIGHT[fifaStatusOf(b.key)])[0]
+      } else {
+        ch = channels.find((c) => c.isLive && c.category === cat && !seen.has(c.key))
+      }
       if (ch) { picks.push(ch); seen.add(ch.key) }
     }
     // Fill any remaining slots with any other live channels

@@ -110,6 +110,11 @@ function TrendingSections({ channels, setActiveCategory }) {
       if (!map[cat]) map[cat] = []
       map[cat].push(ch)
     }
+    if (map.fifa2026) {
+      map.fifa2026 = [...map.fifa2026].sort(
+        (a, b) => FIFA_SORT_WEIGHT[fifaStatusOf(a.key)] - FIFA_SORT_WEIGHT[fifaStatusOf(b.key)]
+      )
+    }
     return map
   }, [channels])
 
