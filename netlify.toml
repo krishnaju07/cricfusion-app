@@ -13,7 +13,7 @@
 
 [[redirects]]
   from = "/cf-geo/*"
-  to = "/.netlify/functions/cf-geo?path=:splat"
+  to = "/.netlify/functions/cf-geo/:splat"
   status = 200
 
 [[redirects]]
