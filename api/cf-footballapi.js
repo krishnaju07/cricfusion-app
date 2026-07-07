@@ -3,7 +3,6 @@
 // Filters to FIFA World Cup only; returns channel_title as the display name.
 
 const ALLOWED = [
-  'https://cricfusion.vercel.app',
   'http://localhost:5173',
   'http://localhost:4173',
   'https://cricfusion.netlify.app'

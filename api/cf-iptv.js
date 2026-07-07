@@ -1,9 +1,8 @@
 // Vercel serverless — live FIFA/World Cup channels from iptv-eldbert.xyz
 // Fetches at request time so tokenized stream URLs are always fresh.
-// Referer-locked: only cricfusion.vercel.app and localhost may fetch this.
+// Referer-locked: only cricfusion.netlify.app and localhost may fetch this.
 
 const ALLOWED = [
-  'https://cricfusion.vercel.app',
   'http://localhost:5173',
   'http://localhost:4173',
   'https://cricfusion.netlify.app'

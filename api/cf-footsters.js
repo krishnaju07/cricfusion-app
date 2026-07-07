@@ -1,9 +1,8 @@
 // Vercel serverless — FIFA 2026 streams from footsters-live.pages.dev and footsters-tv.pages.dev
 // Fetches with iPhone UA and follows redirects to resolve actual CDN HLS stream URLs.
-// Referer-locked: only cricfusion.vercel.app and localhost may fetch this.
+// Referer-locked: only cricfusion.netlify.app and localhost may fetch this.
 
 const ALLOWED = [
-  'https://cricfusion.vercel.app',
   'http://localhost:5173',
   'http://localhost:4173',
   'https://cricfusion.netlify.app'

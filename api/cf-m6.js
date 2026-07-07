@@ -1,9 +1,8 @@
 // Vercel serverless — M6 France DASH manifest proxy.
 // Fetches the M6 MPD with the required Origin header (6cloud.fr CDN is origin-restricted).
-// Referer-locked: only cricfusion.vercel.app and localhost may call this.
+// Referer-locked: only cricfusion.netlify.app and localhost may call this.
 
 const ALLOWED = [
-  'https://cricfusion.vercel.app',
   'http://localhost:5173',
   'http://localhost:4173',
   'https://cricfusion.netlify.app'
