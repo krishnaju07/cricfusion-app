@@ -1,6 +1,6 @@
 // Merged proxy: replaces cf-data.js, cf-fancode.js, cf-sonyliv.js
 // SW calls /api/cf-proxy?src=data|fancode|sonyliv
-// Upstream URLs are never exposed to the browser.
+// Upstream URLs are never exposed to the browser.,
 
 const ALLOWED = [
   'https://cricfusion.vercel.app',
