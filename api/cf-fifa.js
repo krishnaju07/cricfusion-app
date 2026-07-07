@@ -1,9 +1,10 @@
 // Vercel serverless — FIFA 2026 stream data.
 // Dynamic channels are fetched live from footapi (keys + URLs always fresh).
 // Static channels are for streams not available in footapi.
-// Referer-locked: only cricfusion.netlify.app and localhost may fetch this.
+// Referer-locked: only cricfusion.vercel.app and localhost may fetch this.
 
 const ALLOWED = [
+  'https://cricfusion.vercel.app',
   'http://localhost:5173',
   'http://localhost:4173',
   'https://cricfusion.netlify.app'

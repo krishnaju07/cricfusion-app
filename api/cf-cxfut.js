@@ -3,6 +3,7 @@
 // always gets the actual CDN stream URL, not a relay page.
 
 const ALLOWED = [
+  'https://cricfusion.vercel.app',
   'http://localhost:5173',
   'http://localhost:4173',
   'https://cricfusion.netlify.app'
