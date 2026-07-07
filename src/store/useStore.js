@@ -23,7 +23,12 @@ import {
 // below and set GEO_PROXY_URL in Vercel. See api/cf-geo.js.
 const GEO_HOSTS = /^https:\/\/(svc4[0-9]\.main\.sl\.t-online\.de)\//
 function routeGeoChannel(ch) {
-  // Pass-through for now (direct URL → works with the user's own VPN).
+  // The /cf-geo/<host>/<path> proxy needs a residential German IP
+  // (GEO_PROXY_URL) that isn't configured, so it 400s/503s. Undo the proxy
+  // prefix back to a direct URL — playable with the viewer's own German VPN.
+  if (typeof ch.url === 'string' && ch.url.startsWith('/cf-geo/')) {
+    return { ...ch, url: 'https://' + ch.url.slice('/cf-geo/'.length) }
+  }
   return ch
 }
 
