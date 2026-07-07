@@ -5,8 +5,7 @@
 const ALLOWED = [
   'https://cricfusion.vercel.app',
   'http://localhost:5173',
-  'http://localhost:4173',
-  'https://cricfusion.netlify.app'
+  'http://localhost:4173'
 ]
 
 const M6_MPD = 'https://origin-m6web.live.6cloud.fr/out/v1/6play/6play-m6/cmaf_cenc00/dash-short-hd.mpd'

@@ -6,8 +6,7 @@
 const ALLOWED = [
   'https://cricfusion.vercel.app',
   'http://localhost:5173',
-  'http://localhost:4173',
-  'https://cricfusion.netlify.app'
+  'http://localhost:4173'
 ]
 
 const FOOTAPI_URL = 'https://footapi-psi.vercel.app/main'
