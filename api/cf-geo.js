@@ -41,7 +41,7 @@ function getAgent() {
 export default async function handler(req, res) {
   // Referer-gate browser calls; allow empty referers (a Chromecast sends none).
   const referer = req.headers['referer'] || req.headers['origin'] || ''
-  if (referer && !ALLOWED_REFERERS.some((o) => referer.startsWith(o))) {
+  if (referer && !ALLOWED.some((o) => referer.startsWith(o))) {
     return res.status(403).end('Forbidden')
   }
 
