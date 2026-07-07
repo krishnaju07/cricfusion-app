@@ -1,21 +1,14 @@
-// Vercel Edge Function — transparent proxy for FanCode CDN.
-// Runs on Cloudflare edge nodes close to the user (Mumbai for IN users),
-// so the outgoing IP is a Cloudflare edge IP rather than an AWS Lambda IP.
+// Netlify Edge Function — transparent proxy for FanCode CDN.
+// Runs on Netlify's edge network close to the user.
 // Strips cross-origin headers by only forwarding clean browser-like headers.
 // Rewrites absolute CDN URLs inside HLS manifests so segment fetches also
 // go through this proxy.
 
-export const config = { runtime: 'edge' }
-
 export default async function handler(req) {
   const url = new URL(req.url)
-  const path = url.searchParams.get('path') || ''
-
-  // Forward original CDN query params (tokens etc.), drop the injected 'path'
-  const params = new URLSearchParams(url.search)
-  params.delete('path')
-  const qs = params.toString()
-  const upstream = `https://in-mc-fblive.fancode.com/${path}${qs ? '?' + qs : ''}`
+  const path = url.pathname.replace(/^\/fc-cdn\//, '')
+  const qs = url.search
+  const upstream = `https://in-mc-fblive.fancode.com/${path}${qs}`
 
   let upstreamResp
   try {
@@ -58,3 +51,5 @@ export default async function handler(req) {
   // Stream binary segments directly — avoids loading full segment into memory
   return new Response(upstreamResp.body, { status: upstreamResp.status, headers: responseHeaders })
 }
+
+export const config = { path: '/fc-cdn/*' }

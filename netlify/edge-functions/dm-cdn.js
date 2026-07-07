@@ -1,22 +1,18 @@
-// Vercel Edge Function — transparent proxy for dishmt.slivcdn.com (Sony LIV Akamai CDN).
+// Netlify Edge Function — transparent proxy for dishmt.slivcdn.com (Sony LIV Akamai CDN).
 // Akamai's HLS response sends Access-Control-Allow-Methods/Headers but no
 // Access-Control-Allow-Origin, so hls.js's cross-origin fetch/XHR gets blocked
 // by the browser. Proxying same-origin and adding ACAO fixes it.
 // The hdntl auth token is embedded as literal path/query segments containing
 // '=', '~', '/' — must be forwarded verbatim, never re-encoded.
 
-export const config = { runtime: 'edge' }
-
 export default async function handler(req) {
   const url = new URL(req.url)
-  const path = url.searchParams.get('path') || ''
+  const path = url.pathname.replace(/^\/dm-cdn\//, '')
 
   // Preserve the raw query string verbatim — re-stringifying via
   // URLSearchParams re-encodes '=' inside the hdntl/hmac value, breaking
   // Akamai's token validation.
-  const rawQs = url.search.slice(1).split('&')
-    .filter((p) => !p.startsWith('path='))
-    .join('&')
+  const rawQs = url.search.slice(1)
 
   const upstream = `https://dishmt.slivcdn.com/${path}${rawQs ? '?' + rawQs : ''}`
 
@@ -58,3 +54,5 @@ export default async function handler(req) {
 
   return new Response(upstreamResp.body, { status: upstreamResp.status, headers: responseHeaders })
 }
+
+export const config = { path: '/dm-cdn/*' }

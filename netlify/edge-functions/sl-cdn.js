@@ -1,14 +1,9 @@
-// Vercel Edge Function — transparent proxy for Sony LIV Akamai CDN.
-// Runs on Cloudflare edge nodes close to the user (Mumbai for IN users).
-// Previous implementation used Node.js Lambda (bom1) but Akamai CDN returns
-// 403/219 for AWS data-center IPs. Edge runtime uses Cloudflare nodes which
-// have different ASN classification and may be accepted by Akamai.
-
-export const config = { runtime: 'edge' }
+// Netlify Edge Function — transparent proxy for Sony LIV Akamai CDN.
+// Runs on Netlify's edge network close to the user.
 
 // Residential proxy configuration for Akamai CDN bypass (optional, paid service)
 // Set via environment variables: PROXY_URL (e.g., http://user:pass@proxy-host:port)
-const RESIDENTIAL_PROXY = process.env.PROXY_URL || null
+const RESIDENTIAL_PROXY = Deno.env.get('PROXY_URL') || null
 
 function proxyAkamaiUrl(url, hdnea) {
   let out = url
@@ -45,7 +40,7 @@ export default async function handler(req) {
   }
 
   const url = new URL(req.url)
-  const path = url.searchParams.get('path') || ''
+  const path = url.pathname.replace(/^\/sl-cdn\//, '')
   const hdnea = url.searchParams.get('hdnea') || ''
   const akamaiHost = url.searchParams.get('host') === 'p'
     ? 'sonypartnersdaimenew.akamaized.net'
@@ -54,16 +49,16 @@ export default async function handler(req) {
   // Preserve raw query string verbatim — URLSearchParams.toString() re-encodes
   // '=' inside hdnea/hmac values as '%3D', breaking Akamai's HMAC validation.
   const rawQs = url.search.slice(1).split('&')
-    .filter((p) => !p.startsWith('path=') && !p.startsWith('host='))
+    .filter((p) => !p.startsWith('host='))
     .join('&')
 
   const upstream = `https://${akamaiHost}/${path}${rawQs ? '?' + rawQs : ''}`
 
   // Forward the original client IP so Akamai's CDN IP-allowlist check
-  // sees the browser's Indian residential IP instead of Cloudflare's IP.
+  // sees the browser's Indian residential IP instead of Netlify's IP.
   const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || req.headers.get('x-nf-client-connection-ip')
     || req.headers.get('x-real-ip')
-    || req.headers.get('cf-connecting-ip')
 
   // Abort if Akamai doesn't respond within 8 s — prevents hls.js from showing
   // "Loading stream..." indefinitely when Akamai drops the TCP connection.
@@ -123,3 +118,5 @@ export default async function handler(req) {
 
   return new Response(upstreamResp.body, { status: upstreamResp.status, headers: responseHeaders })
 }
+
+export const config = { path: '/sl-cdn/*' }
